@@ -1,4 +1,4 @@
-from os import scandir, path
+from os import scandir, path, remove
 from datetime import datetime
 from hashlib import sha256
 
@@ -55,7 +55,14 @@ def scan(folder_path):
     return res, repeats
 
 
+def delete_repeats(repeats):
+    for i in repeats:
+        for j in i[1:]:
+            remove(j)
+
+
 if __name__ == '__main__':
     res, repeats = scan(r'C:\Users\MAXIM\Desktop\assets')
     print(res)
     print(repeats)
+    delete_repeats(repeats)
