@@ -7,14 +7,24 @@ class ErrorFile(Exception):
     pass
 
 
+def folder_size(folder_path):
+    size = 0
+    with scandir(folder_path) as files:
+        for file in files:
+            if file.is_file():
+                size += file.stat().st_size
+            elif file.is_dir():
+                size += folder_size(file.path)
+
+    return size
+
+
 def scan(folder_path):
     res = list()
     repeats = dict()
     sizes = dict()
-
     if not path.isdir(folder_path):
         raise ErrorFile('Указан неправильный путь до папки')
-
     sum_size = 0
 
     with scandir(folder_path) as files:
@@ -23,13 +33,16 @@ def scan(folder_path):
                 inf = file.stat()
                 m = inf.st_size
                 sum_size += m
-
                 res.append(
                     (file.name, round(m / 1024, 1), datetime.fromtimestamp(inf.st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
-
                 if m not in sizes:
                     sizes[m] = list()
                 sizes[m].append(file.path)
+            elif file.is_dir():
+                m = folder_size(file.path)
+                sum_size += m
+                res.append((file.name, round(m / 1024, 1),
+                            datetime.fromtimestamp(file.stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
 
     if not res:
         raise ErrorFile('В указанной папке нет файлов')
@@ -40,7 +53,6 @@ def scan(folder_path):
 
         for file_path in files:
             file_hash = sha256()
-
             with open(file_path, 'rb') as f:
                 while chunk := f.read(1024 * 1024):
                     file_hash.update(chunk)
@@ -50,9 +62,9 @@ def scan(folder_path):
             repeats[file_hash].append(file_path)
 
     repeats = [files for files in repeats.values() if len(files) > 1]
-    res.append((path.basename(path.normpath(folder_path)), round(sum_size / 1024, 1)))
 
-    return res, repeats
+    return res, repeats, ((path.basename(path.normpath(folder_path)), round(sum_size / 1024, 1),
+                datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
 
 
 def delete_repeats(repeats):
@@ -62,7 +74,7 @@ def delete_repeats(repeats):
 
 
 if __name__ == '__main__':
-    res, repeats = scan(r'C:\Users\MAXIM\Desktop\assets')
+    res, repeats, main = scan(r'C:\Users\MAXIM\Desktop\assets')
     print(res)
     print(repeats)
-    delete_repeats(repeats)
+    print(main)
