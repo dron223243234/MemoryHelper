@@ -1,19 +1,36 @@
-from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton
+from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
+    QTableWidgetItem
 import sys
+from FolderScan import scan
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.table = FileTable()
-        self.setCentralWidget(self.table)
+        self.cont1 = QWidget()
+        self.OpenButton = QPushButton('Выбрать папку')
+        self.layout1 = QVBoxLayout(self.cont1)
+        self.layout1.addWidget(self.OpenButton)
+        self.layout1.addWidget(self.table)
+        self.setCentralWidget(self.cont1)
+        self.OpenButton.clicked.connect(self.choose_folder)
+
+    def choose_folder(self):
+        path = QFileDialog.getExistingDirectory()
+        res, repeats, main = scan(path)
+        self.table.setRowCount(len(res))
+        for i in range(len(res)):
+            self.table.setItem(i, 0, QTableWidgetItem(str(res[i][0])))
+            self.table.setItem(i, 1, QTableWidgetItem(str(res[i][1])))
+            self.table.setItem(i, 2, QTableWidgetItem(str(res[i][2])))
 
 
 class FileTable(QTableWidget):
     def __init__(self):
         super().__init__()
         self.setColumnCount(3)
-        self.setRowCount(3)
+        self.setRowCount(1)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.setHorizontalHeaderLabels(('Имя', 'Вес', 'Дата'))
 
@@ -28,4 +45,3 @@ if __name__ == '__main__':
     ex = MainWindow()
     ex.show()
     sys.exit(app.exec())
-
