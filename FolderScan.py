@@ -65,7 +65,7 @@ def scan(folder_path):
     res.sort(key=lambda x: x[1], reverse=True)
 
     return res, repeats, ((path.basename(path.normpath(folder_path)), round(sum_size / 1024, 1),
-                datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
+                           datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
 
 
 def delete_repeats(repeats):
@@ -112,4 +112,4 @@ if __name__ == '__main__':
     print(repeats)
     print(main)
     l, r = file_selection(1000, 97959, res)
-    print(res[l : r])
+    print(res[l: r])
