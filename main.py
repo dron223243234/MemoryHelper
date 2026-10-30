@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QTableWidgetItem
+    QTableWidgetItem, QMessageBox
 from PyQt6.QtCore import QThread, pyqtSignal
 import sys
 from FolderScan import scan
@@ -18,7 +18,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
 
-
     def choose_folder(self):
         path = QFileDialog.getExistingDirectory()
         if not path:
@@ -27,8 +26,8 @@ class MainWindow(QMainWindow):
         self.scan_thread.result_ready.connect(self.show_result)
         self.OpenButton.setEnabled(False)
         self.scan_thread.finished.connect(lambda: self.OpenButton.setEnabled(True))
+        self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
-
 
     def show_result(self, res, repeat, main):
         self.res, self.repeats, self.main = res, repeat, main
@@ -37,6 +36,9 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+
+    def show_error(self, e):
+        QMessageBox.critical(self, 'Ошибка сканирования', e)
 
 
 class FileTable(QTableWidget):
@@ -50,13 +52,17 @@ class FileTable(QTableWidget):
 
 class ScanThread(QThread):
     result_ready = pyqtSignal(object, object, object)
+    error = pyqtSignal(str)
 
     def __init__(self, path):
         super().__init__()
         self.path = path
 
     def run(self):
-        self.result_ready.emit(*scan(self.path))
+        try:
+            self.result_ready.emit(*scan(self.path))
+        except Exception as e:
+            self.error.emit(str(e))
 
 
 def except_hook(cls, exception, traceback):
