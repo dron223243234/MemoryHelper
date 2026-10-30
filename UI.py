@@ -1,14 +1,21 @@
-from PyQt6.QtWidgets import QTableWidget, QApplication
+from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow
 import sys
 
 
-class MainWindow(QTableWidget):
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.table = FileTable()
+        self.setCentralWidget(self.table)
+
+
+class FileTable(QTableWidget):
     def __init__(self):
         super().__init__()
         self.setColumnCount(3)
-        self.setRowCount(1)
-        self.setHorizontalHeaderLabels(('Файл', 'Размер, КБ', 'Последние изменение'))
+        self.setRowCount(3)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.setHorizontalHeaderLabels(('Имя', 'Вес', 'Дата'))
 
 
 def except_hook(cls, exception, traceback):
