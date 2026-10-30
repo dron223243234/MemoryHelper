@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QV
     QTableWidgetItem
 import sys
 from FolderScan import scan
+import os
 
 
 class MainWindow(QMainWindow):
@@ -21,8 +22,8 @@ class MainWindow(QMainWindow):
         res, repeats, main = scan(path)
         self.table.setRowCount(len(res))
         for i in range(len(res)):
-            self.table.setItem(i, 0, QTableWidgetItem(str(res[i][0])))
-            self.table.setItem(i, 1, QTableWidgetItem(str(res[i][1])))
+            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(res[i][0]))))
+            self.table.setItem(i, 1, QTableWidgetItem(str(round(res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(res[i][2])))
 
 
