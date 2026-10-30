@@ -17,6 +17,7 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
+        self.scan_thread = None
 
     def choose_folder(self):
         path = QFileDialog.getExistingDirectory()
@@ -39,6 +40,11 @@ class MainWindow(QMainWindow):
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
+
+    def closeEvent(self, event):
+        if self.scan_thread is not None and self.scan_thread.isRunning():
+            event.ignore()
+            QMessageBox.critical(self, '', 'Сканирование ещё выполняется')
 
 
 class FileTable(QTableWidget):
