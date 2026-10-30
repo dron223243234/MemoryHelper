@@ -62,6 +62,7 @@ def scan(folder_path):
             repeats[file_hash].append(file_path)
 
     repeats = [files for files in repeats.values() if len(files) > 1]
+    res.sort(key=lambda x: x[1], reverse=True)
 
     return res, repeats, ((path.normpath(folder_path), sum_size,
                 datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S'), 1))
@@ -73,8 +74,42 @@ def delete_repeats(repeats):
             remove(j)
 
 
+def file_selection(down, up, files):
+    ln = len(files)
+    flag1, flag2 = False, False
+    if down < files[-1][1]:
+        flag1 = True
+    if up > files[0][1]:
+        flag2 = True
+    if down > up:
+        raise ErrorFile('Нижняя граница больше верхней')
+    l, r = 0, ln
+    down_num = ln
+    if not flag1:
+        while l < r:
+            mid = l + (r - l) // 2
+            if files[mid][1] < down:
+                r = mid
+            else:
+                l = mid + 1
+        down_num = l
+        l, r = 0, ln
+    up_num = 0
+    if not flag2:
+        while l < r:
+            mid = l + (r - l) // 2
+            if files[mid][1] > up:
+                l = mid + 1
+            else:
+                r = mid
+        up_num = l
+    return up_num, down_num
+
+
 if __name__ == '__main__':
     res, repeats, main = scan(r'C:\Users\MAXIM\Desktop\assets')
     print(res)
     print(repeats)
     print(main)
+    l, r = file_selection(1000, 97959, res)
+    print(res[l : r])
