@@ -107,7 +107,7 @@ def file_selection(down, up, files):
 
 
 if __name__ == '__main__':
-    res, repeats, main = scan(r'C:\Users\MAXIM\Desktop\assets')
+    res, repeats, main = scan(r'C:\Users\MAXIM')
     print(res)
     print(repeats)
     print(main)

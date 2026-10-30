@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
     QTableWidgetItem
+from PyQt6.QtCore import QThread, pyqtSignal
 import sys
 from FolderScan import scan
 import os
@@ -17,14 +18,25 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
 
+
     def choose_folder(self):
         path = QFileDialog.getExistingDirectory()
-        res, repeats, main = scan(path)
-        self.table.setRowCount(len(res))
-        for i in range(len(res)):
-            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(res[i][0]))))
-            self.table.setItem(i, 1, QTableWidgetItem(str(round(res[i][1] / 1024, 1))))
-            self.table.setItem(i, 2, QTableWidgetItem(str(res[i][2])))
+        if not path:
+            return
+        self.scan_thread = ScanThread(path)
+        self.scan_thread.result_ready.connect(self.show_result)
+        self.OpenButton.setEnabled(False)
+        self.scan_thread.finished.connect(lambda: self.OpenButton.setEnabled(True))
+        self.scan_thread.start()
+
+
+    def show_result(self, res, repeat, main):
+        self.res, self.repeats, self.main = res, repeat, main
+        self.table.setRowCount(len(self.res))
+        for i in range(len(self.res)):
+            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
+            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
 
 
 class FileTable(QTableWidget):
@@ -33,7 +45,18 @@ class FileTable(QTableWidget):
         self.setColumnCount(3)
         self.setRowCount(1)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.setHorizontalHeaderLabels(('Имя', 'Вес', 'Дата'))
+        self.setHorizontalHeaderLabels(('Имя', 'Вес КБ', 'Дата'))
+
+
+class ScanThread(QThread):
+    result_ready = pyqtSignal(object, object, object)
+
+    def __init__(self, path):
+        super().__init__()
+        self.path = path
+
+    def run(self):
+        self.result_ready.emit(*scan(self.path))
 
 
 def except_hook(cls, exception, traceback):
