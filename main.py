@@ -44,7 +44,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
             event.ignore()
-            QMessageBox.critical(self, '', 'Сканирование ещё выполняется')
+            QMessageBox.critical(self, 'Ошибка сканирования',
+                                 'Сканирование ещё выполняется. Дождитесь завершения.')
 
 
 class FileTable(QTableWidget):
