@@ -34,18 +34,18 @@ def scan(folder_path):
                 m = inf.st_size
                 sum_size += m
                 res.append(
-                    (file.path, m, datetime.fromtimestamp(inf.st_mtime).strftime('%d.%m.%Y %H:%M:%S'), 0))
+                    (file.name, round(m / 1024, 1), datetime.fromtimestamp(inf.st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
                 if m not in sizes:
                     sizes[m] = list()
                 sizes[m].append(file.path)
             elif file.is_dir():
                 m = folder_size(file.path)
                 sum_size += m
-                res.append((file.path, m,
-                            datetime.fromtimestamp(file.stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S'), 1))
+                res.append((file.name, round(m / 1024, 1),
+                            datetime.fromtimestamp(file.stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
 
     if not res:
-        raise ErrorFile('Указанная папка пуста')
+        raise ErrorFile('В указанной папке нет файлов')
 
     for files in sizes.values():
         if len(files) < 2:
@@ -64,8 +64,8 @@ def scan(folder_path):
     repeats = [files for files in repeats.values() if len(files) > 1]
     res.sort(key=lambda x: x[1], reverse=True)
 
-    return res, repeats, ((path.normpath(folder_path), sum_size,
-                datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S'), 1))
+    return res, repeats, ((path.basename(path.normpath(folder_path)), round(sum_size / 1024, 1),
+                datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
 
 
 def delete_repeats(repeats):
