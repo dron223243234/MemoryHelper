@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QTableWidgetItem, QMessageBox
+    QTableWidgetItem, QMessageBox, QHeaderView
 from PyQt6.QtCore import QThread, pyqtSignal
 import sys
 from FolderScan import scan
@@ -18,6 +18,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
         self.scan_thread = None
+        self.resize(960, 540)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setStretchLastSection(True)
 
     def choose_folder(self):
         path = QFileDialog.getExistingDirectory()
