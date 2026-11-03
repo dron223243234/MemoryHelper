@@ -94,6 +94,9 @@ class MainWindow(QMainWindow):
                 self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
                 self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
                 k += 1
+            self.files_count.setText(f'''Количество файлов/папок: {mx - mn}
+Суммарный вес файлов: {round(sum(i[-2] for i in self.res[mn : mx]) / 1024, 1)} КБ
+''')
         except FolderScan.ErrorFile as e:
             self.show_error(str(e))
         except ValueError as e:
