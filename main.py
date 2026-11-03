@@ -96,6 +96,8 @@ class MainWindow(QMainWindow):
                 k += 1
         except FolderScan.ErrorFile as e:
             self.show_error(str(e))
+        except ValueError as e:
+            self.show_error('Введите число')
 
 
 class FileTable(QTableWidget):
