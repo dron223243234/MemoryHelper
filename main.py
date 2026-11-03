@@ -82,6 +82,9 @@ class MainWindow(QMainWindow):
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка', e)
         self.open_button.setText('Выбрать папку')
+        if self.res:
+            self.file_selection.setEnabled(True)
+            self.clear_filters.setEnabled(True)
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
