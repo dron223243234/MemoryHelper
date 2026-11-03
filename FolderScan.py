@@ -30,7 +30,6 @@ def scan(folder_path):
     with scandir(folder_path) as files:
         k = 0
         for file in files:
-            k += 1
             if file.is_file():
                 inf = file.stat()
                 m = inf.st_size
@@ -45,6 +44,7 @@ def scan(folder_path):
                 sum_size += m
                 res.append((file.path, m,
                             datetime.fromtimestamp(file.stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
+            k += 1
 
     if not res:
         raise ErrorFile('В указанной папке нет файлов')
@@ -65,6 +65,16 @@ def scan(folder_path):
 
     repeats = [files for files in repeats.values() if len(files) > 1]
     res.sort(key=lambda x: x[1], reverse=True)
+    positions = {}
+    i = 0
+    for file in res:
+        positions[file[0]] = i
+        i += 1
+    for group in repeats:
+        i = 0
+        for file in group:
+            group[i] = (file[0], positions[file[0]])
+            i += 1
 
     return res, repeats, ((path.normpath(folder_path), sum_size,
                            datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
