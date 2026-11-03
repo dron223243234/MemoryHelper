@@ -29,6 +29,7 @@ class MainWindow(QMainWindow):
         self.scan_thread = ScanThread(path)
         self.scan_thread.result_ready.connect(self.show_result)
         self.OpenButton.setEnabled(False)
+        self.OpenButton.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.OpenButton.setEnabled(True))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+        self.OpenButton.setText('Выбрать папку')
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
