@@ -66,6 +66,12 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+        if self.repeats:
+            k = 0
+            for i in self.repeats:
+                k += 1
+                for j in i:
+                    self.table.setItem(j[1], 3, QTableWidgetItem(f'Группа {k}'))
         message = QMessageBox(self)
         message.setIcon(QMessageBox.Icon.Information)
         message.setWindowTitle('Сканирование папки')
@@ -134,10 +140,10 @@ class MainWindow(QMainWindow):
 class FileTable(QTableWidget):
     def __init__(self):
         super().__init__()
-        self.setColumnCount(3)
+        self.setColumnCount(4)
         self.setRowCount(1)
         self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-        self.setHorizontalHeaderLabels(('Имя', 'Вес КБ', 'Дата'))
+        self.setHorizontalHeaderLabels(('Имя', 'Вес КБ', 'Дата', 'Группа'))
 
 
 class ScanThread(QThread):

@@ -28,7 +28,9 @@ def scan(folder_path):
     sum_size = 0
 
     with scandir(folder_path) as files:
+        k = 0
         for file in files:
+            k += 1
             if file.is_file():
                 inf = file.stat()
                 m = inf.st_size
@@ -37,7 +39,7 @@ def scan(folder_path):
                     (file.path, m, datetime.fromtimestamp(inf.st_mtime).strftime('%d.%m.%Y %H:%M:%S')))
                 if m not in sizes:
                     sizes[m] = list()
-                sizes[m].append(file.path)
+                sizes[m].append((file.path, k))
             elif file.is_dir():
                 m = folder_size(file.path)
                 sum_size += m
@@ -53,7 +55,7 @@ def scan(folder_path):
 
         for file_path in files:
             file_hash = sha256()
-            with open(file_path, 'rb') as f:
+            with open(file_path[0], 'rb') as f:
                 while chunk := f.read(1024 * 1024):
                     file_hash.update(chunk)
             file_hash = file_hash.hexdigest()
