@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QTableWidgetItem, QMessageBox, QHeaderView
+    QTableWidgetItem, QMessageBox, QHeaderView, QLabel
 from PyQt6.QtCore import QThread, pyqtSignal
 import sys
 from FolderScan import scan
@@ -11,9 +11,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.table = FileTable()
         self.cont1 = QWidget()
+        self.FilesCount = QLabel('''Количество файлов/папок: -''')
         self.OpenButton = QPushButton('Выбрать папку')
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.OpenButton)
+        self.layout1.addWidget(self.FilesCount)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
@@ -42,6 +44,7 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
         self.OpenButton.setText('Выбрать папку')
+        self.FilesCount.setText(f'Количество файлов/папок: {len(self.res)}')
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
