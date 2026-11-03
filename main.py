@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
     QTableWidgetItem, QMessageBox, QHeaderView, QLabel
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
 import sys
 from FolderScan import scan
 import os
@@ -43,8 +43,14 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+        message = QMessageBox(self)
+        message.setIcon(QMessageBox.Icon.Information)
+        message.setWindowTitle('Сканирование папки')
+        message.setText('Сканирование завершено')
+        message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.OpenButton.setText('Выбрать папку')
         self.FilesCount.setText(f'Количество файлов/папок: {len(self.res)}')
+        message.exec()
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
