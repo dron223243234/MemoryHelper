@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QV
     QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 import sys
+import FolderScan
 from FolderScan import scan
 import os
 
@@ -11,16 +12,16 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.table = FileTable()
         self.cont1 = QWidget()
-        self.FilesCount = QLabel('''Количество файлов/папок: -
+        self.files_count = QLabel('''Количество файлов/папок: -
 Суммарный вес файлов: -
 ''')
         self.min_size = QLineEdit()
         self.max_size = QLineEdit()
         self.file_selection = QPushButton('Выбрать файлы по размеру')
-        self.OpenButton = QPushButton('Выбрать папку')
+        self.open_button = QPushButton('Выбрать папку')
         self.layout1 = QVBoxLayout(self.cont1)
-        self.layout1.addWidget(self.OpenButton)
-        self.layout1.addWidget(self.FilesCount)
+        self.layout1.addWidget(self.open_button)
+        self.layout1.addWidget(self.files_count)
         self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
         self.layout1.addWidget(self.min_size)
         self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
@@ -28,7 +29,8 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(self.file_selection)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
-        self.OpenButton.clicked.connect(self.choose_folder)
+        self.open_button.clicked.connect(self.choose_folder)
+        self.file_selection.clicked.connect(self.show_slice)
         self.scan_thread = None
         self.resize(960, 540)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -40,9 +42,9 @@ class MainWindow(QMainWindow):
             return
         self.scan_thread = ScanThread(path)
         self.scan_thread.result_ready.connect(self.show_result)
-        self.OpenButton.setEnabled(False)
-        self.OpenButton.setText('Сканирование')
-        self.scan_thread.finished.connect(lambda: self.OpenButton.setEnabled(True))
+        self.open_button.setEnabled(False)
+        self.open_button.setText('Сканирование')
+        self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
@@ -58,21 +60,32 @@ class MainWindow(QMainWindow):
         message.setWindowTitle('Сканирование папки')
         message.setText('Сканирование завершено')
         message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
-        self.OpenButton.setText('Выбрать папку')
-        self.FilesCount.setText(f'''Количество файлов/папок: {len(self.res)}
+        self.open_button.setText('Выбрать папку')
+        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
 Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
 ''')
         message.exec()
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
-        self.OpenButton.setText('Выбрать папку')
+        self.open_button.setText('Выбрать папку')
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
             event.ignore()
             QMessageBox.critical(self, 'Ошибка сканирования',
                                  'Сканирование ещё выполняется. Дождитесь завершения.')
+
+    def show_slice(self):
+        x1, x2 = int(self.min_size.text()) * 1024, int(self.max_size.text()) * 1024
+        mn, mx = FolderScan.file_selection(x1, x2, self.res)
+        k = 0
+        self.table.setRowCount(mx - mn)
+        for i in range(mn, mx):
+            self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
+            self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
+            k += 1
 
 
 class FileTable(QTableWidget):
