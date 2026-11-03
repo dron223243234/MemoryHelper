@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QTableWidgetItem, QMessageBox, QHeaderView, QLabel
+    QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 import sys
 from FolderScan import scan
@@ -11,11 +11,21 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.table = FileTable()
         self.cont1 = QWidget()
-        self.FilesCount = QLabel('''Количество файлов/папок: -''')
+        self.FilesCount = QLabel('''Количество файлов/папок: -
+Суммарный вес файлов: -
+''')
+        self.min_size = QLineEdit()
+        self.max_size = QLineEdit()
+        self.file_selection = QPushButton('Выбрать файлы по размеру')
         self.OpenButton = QPushButton('Выбрать папку')
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.OpenButton)
         self.layout1.addWidget(self.FilesCount)
+        self.layout1.addWidget(QLabel('Минимальный размер файла:'))
+        self.layout1.addWidget(self.min_size)
+        self.layout1.addWidget(QLabel('Максимальный размер файла:'))
+        self.layout1.addWidget(self.max_size)
+        self.layout1.addWidget(self.file_selection)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.OpenButton.clicked.connect(self.choose_folder)
@@ -49,7 +59,9 @@ class MainWindow(QMainWindow):
         message.setText('Сканирование завершено')
         message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.OpenButton.setText('Выбрать папку')
-        self.FilesCount.setText(f'Количество файлов/папок: {len(self.res)}')
+        self.FilesCount.setText(f'''Количество файлов/папок: {len(self.res)}
+Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)}
+''')
         message.exec()
 
     def show_error(self, e):
