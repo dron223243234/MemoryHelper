@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+            self.table.setItem(i, 3, QTableWidgetItem('-'))
         if self.repeats:
             k = 0
             for i in self.repeats:
@@ -115,10 +116,17 @@ class MainWindow(QMainWindow):
                 self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
                 self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
                 self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
+                self.table.setItem(k, 3, QTableWidgetItem('-'))
                 k += 1
             self.files_count.setText(f'''Количество файлов/папок: {mx - mn}
 Суммарный вес файлов: {round(sum(i[-2] for i in self.res[mn : mx]) / 1024, 1)} КБ
 ''')
+            k = 0
+            for i in self.repeats:
+                k += 1
+                for j in i:
+                    if mn <= j[1] < mx:
+                        self.table.setItem(j[1] - mn, 3, QTableWidgetItem(f'Группа {k}'))
         except FolderScan.ErrorFile as e:
             self.show_error(str(e))
         except ValueError as e:
