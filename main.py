@@ -67,25 +67,35 @@ class MainWindow(QMainWindow):
         message.exec()
 
     def show_error(self, e):
-        QMessageBox.critical(self, 'Ошибка сканирования', e)
+        QMessageBox.critical(self, 'Ошибка', e)
         self.open_button.setText('Выбрать папку')
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
             event.ignore()
-            QMessageBox.critical(self, 'Ошибка сканирования',
+            QMessageBox.critical(self, 'Ошибка',
                                  'Сканирование ещё выполняется. Дождитесь завершения.')
 
     def show_slice(self):
-        x1, x2 = int(self.min_size.text()) * 1024, int(self.max_size.text()) * 1024
-        mn, mx = FolderScan.file_selection(x1, x2, self.res)
-        k = 0
-        self.table.setRowCount(mx - mn)
-        for i in range(mn, mx):
-            self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-            self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
-            self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
-            k += 1
+        try:
+            x1, x2 = self.min_size.text(), self.max_size.text()
+            if not x1:
+                x1 = 0
+            if not x2:
+                x2 = self.res[0][1] / 1024
+            if float(x1) < 0 or float(x2) < 0:
+                raise FolderScan.ErrorFile('Размер файлов должен быть больше или равен 0')
+            x1, x2 = float(x1) * 1024, float(x2) * 1024
+            mn, mx = FolderScan.file_selection(x1, x2, self.res)
+            k = 0
+            self.table.setRowCount(mx - mn)
+            for i in range(mn, mx):
+                self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
+                self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+                self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
+                k += 1
+        except FolderScan.ErrorFile as e:
+            self.show_error(str(e))
 
 
 class FileTable(QTableWidget):
