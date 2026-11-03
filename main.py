@@ -19,6 +19,7 @@ class MainWindow(QMainWindow):
         self.max_size = QLineEdit()
         self.file_selection = QPushButton('Выбрать файлы по размеру')
         self.open_button = QPushButton('Выбрать папку')
+        self.clear_filters = QPushButton('Сбросить фильтер')
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.open_button)
         self.layout1.addWidget(self.files_count)
@@ -27,10 +28,12 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
         self.layout1.addWidget(self.max_size)
         self.layout1.addWidget(self.file_selection)
+        self.layout1.addWidget(self.clear_filters)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.open_button.clicked.connect(self.choose_folder)
         self.file_selection.clicked.connect(self.show_slice)
+        self.clear_filters.clicked.connect(self.filter_cleaning)
         self.scan_thread = None
         self.resize(960, 540)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -101,6 +104,13 @@ class MainWindow(QMainWindow):
             self.show_error(str(e))
         except ValueError as e:
             self.show_error('Введите число')
+
+    def filter_cleaning(self):
+        self.table.setRowCount(len(self.res))
+        for i in range(len(self.res)):
+            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
+            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
 
 
 class FileTable(QTableWidget):
