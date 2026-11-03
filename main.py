@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
 
     def show_error(self, e):
         QMessageBox.critical(self, 'Ошибка сканирования', e)
+        self.OpenButton.setText('Выбрать папку')
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
