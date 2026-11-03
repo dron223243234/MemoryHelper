@@ -10,6 +10,7 @@ import os
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.res = None
         self.table = FileTable()
         self.cont1 = QWidget()
         self.files_count = QLabel('''Количество файлов/папок: -
@@ -29,6 +30,8 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(self.max_size)
         self.layout1.addWidget(self.file_selection)
         self.layout1.addWidget(self.clear_filters)
+        self.file_selection.setEnabled(False)
+        self.clear_filters.setEnabled(False)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.open_button.clicked.connect(self.choose_folder)
@@ -40,8 +43,13 @@ class MainWindow(QMainWindow):
         self.table.horizontalHeader().setStretchLastSection(True)
 
     def choose_folder(self):
+        self.file_selection.setEnabled(False)
+        self.clear_filters.setEnabled(False)
         path = QFileDialog.getExistingDirectory()
         if not path:
+            if self.res:
+                self.file_selection.setEnabled(True)
+                self.clear_filters.setEnabled(True)
             return
         self.scan_thread = ScanThread(path)
         self.scan_thread.result_ready.connect(self.show_result)
@@ -64,6 +72,8 @@ class MainWindow(QMainWindow):
         message.setText('Сканирование завершено')
         message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.open_button.setText('Выбрать папку')
+        self.file_selection.setEnabled(True)
+        self.clear_filters.setEnabled(True)
         self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
 Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
 ''')
@@ -107,10 +117,15 @@ class MainWindow(QMainWindow):
 
     def filter_cleaning(self):
         self.table.setRowCount(len(self.res))
+        self.max_size.setText('')
+        self.min_size.setText('')
         for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
+        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
+Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
+''')
 
 
 class FileTable(QTableWidget):
