@@ -21,9 +21,9 @@ class MainWindow(QMainWindow):
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.OpenButton)
         self.layout1.addWidget(self.FilesCount)
-        self.layout1.addWidget(QLabel('Минимальный размер файла:'))
+        self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
         self.layout1.addWidget(self.min_size)
-        self.layout1.addWidget(QLabel('Максимальный размер файла:'))
+        self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
         self.layout1.addWidget(self.max_size)
         self.layout1.addWidget(self.file_selection)
         self.layout1.addWidget(self.table)
@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
         message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.OpenButton.setText('Выбрать папку')
         self.FilesCount.setText(f'''Количество файлов/папок: {len(self.res)}
-Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)}
+Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
 ''')
         message.exec()
 
