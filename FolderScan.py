@@ -80,12 +80,6 @@ def scan(folder_path):
                            datetime.fromtimestamp(path.getmtime(folder_path)).strftime('%d.%m.%Y %H:%M:%S')))
 
 
-def delete_repeats(repeats):
-    for i in repeats:
-        for j in i[1:]:
-            remove(j)
-
-
 def file_selection(down, up, files):
     ln = len(files)
     flag1, flag2 = False, False
@@ -116,6 +110,67 @@ def file_selection(down, up, files):
                 r = mid
         up_num = l
     return up_num, down_num
+
+
+def parse_file_numbers(nums, files):
+    nums = nums.strip()
+    if not nums:
+        raise ErrorFile('Введите номера файлов для удаления')
+    selected = set()
+    for part in nums.split(','):
+        part = part.strip()
+        if not part:
+            raise ErrorFile('После запятой должен быть номер или диапазон')
+        if '-' in part:
+            bounds = part.split('-')
+            if len(bounds) != 2:
+                raise ErrorFile(f'Неправильный диапазон: {part}')
+            try:
+                start, end = map(int, bounds)
+            except ValueError:
+                raise ErrorFile(f'Неправильный диапазон: {part}')
+            if start > end:
+                raise ErrorFile(f'Начало диапазона больше конца: {part}')
+        else:
+            try:
+                start = end = int(part)
+            except ValueError:
+                raise ErrorFile(f'Неправильный номер: {part}')
+        if start < 1 or end > len(files):
+            raise ErrorFile(f'Номера должны быть от 1 до {len(files)}')
+        selected.update(range(start - 1, end))
+
+    indices = sorted(selected)
+    for i in indices:
+        if not path.isfile(files[i][0]):
+            raise ErrorFile(f'Это не файл или файл недоступен:{files[i][0]}')
+    return indices
+
+
+def delete_files(nums, files):
+    indices = parse_file_numbers(nums, files)
+    deleted_files = list()
+    errors = list()
+    for i in indices:
+        file_path = files[i][0]
+        try:
+            remove(file_path)
+            deleted_files.append(file_path)
+        except OSError as e:
+            errors.append(f'{file_path}: {e}')
+
+    return deleted_files, errors
+
+
+def delete_repeats(repeats):
+    files = []
+    for group in repeats:
+        for file in group[1:]:
+            files.append((file[0],))
+    if not files:
+        return [], []
+    nums = ','.join(str(i + 1) for i in range(len(files)))
+    return delete_files(nums, files)
 
 
 if __name__ == '__main__':

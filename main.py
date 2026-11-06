@@ -3,7 +3,6 @@ from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QV
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 import sys
 import FolderScan
-from FolderScan import scan
 import os
 
 
@@ -18,6 +17,9 @@ class MainWindow(QMainWindow):
 ''')
         self.min_size = QLineEdit()
         self.max_size = QLineEdit()
+        self.delete_nums = QLineEdit()
+        self.delete_button = QPushButton('Удалить файлы')
+        self.delete_repeats_button = QPushButton('Удалить все повторы')
         self.file_selection = QPushButton('Выбрать файлы по размеру')
         self.open_button = QPushButton('Выбрать папку')
         self.clear_filters = QPushButton('Сбросить фильтер')
@@ -32,6 +34,12 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(self.clear_filters)
         self.file_selection.setEnabled(False)
         self.clear_filters.setEnabled(False)
+        self.layout1.addWidget(QLabel('Номера файлов для удаления:'))
+        self.layout1.addWidget(self.delete_nums)
+        self.layout1.addWidget(self.delete_button)
+        self.layout1.addWidget(self.delete_repeats_button)
+        self.delete_button.setEnabled(False)
+        self.delete_repeats_button.setEnabled(False)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.open_button.clicked.connect(self.choose_folder)
@@ -45,11 +53,15 @@ class MainWindow(QMainWindow):
     def choose_folder(self):
         self.file_selection.setEnabled(False)
         self.clear_filters.setEnabled(False)
+        self.delete_button.setEnabled(False)
+        self.delete_repeats_button.setEnabled(False)
         path = QFileDialog.getExistingDirectory()
         if not path:
             if self.res:
                 self.file_selection.setEnabled(True)
                 self.clear_filters.setEnabled(True)
+                self.delete_button.setEnabled(True)
+                self.delete_repeats_button.setEnabled(True)
             return
         self.scan_thread = ScanThread(path)
         self.scan_thread.result_ready.connect(self.show_result)
@@ -81,6 +93,8 @@ class MainWindow(QMainWindow):
         self.open_button.setText('Выбрать папку')
         self.file_selection.setEnabled(True)
         self.clear_filters.setEnabled(True)
+        self.delete_button.setEnabled(True)
+        self.delete_repeats_button.setEnabled(True)
         self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
 Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
 ''')
@@ -164,7 +178,7 @@ class ScanThread(QThread):
 
     def run(self):
         try:
-            self.result_ready.emit(*scan(self.path))
+            self.result_ready.emit(*FolderScan.scan(self.path))
         except Exception as e:
             self.error.emit(str(e))
 
