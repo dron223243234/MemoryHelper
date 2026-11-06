@@ -10,6 +10,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.res = None
+        self.current_path = None
         self.visible_files = list()
         self.table = FileTable()
         self.cont1 = QWidget()
@@ -23,6 +24,8 @@ class MainWindow(QMainWindow):
         self.delete_repeats_button = QPushButton('Удалить все повторы')
         self.file_selection = QPushButton('Выбрать файлы по размеру')
         self.open_button = QPushButton('Выбрать папку')
+        self.up_button = QPushButton('На уровень выше')
+        self.current_path_label = QLabel('Текущая папка: не выбрана')
         self.clear_filters = QPushButton('Сбросить фильтер')
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.open_button)
@@ -41,6 +44,10 @@ class MainWindow(QMainWindow):
         self.layout1.addWidget(self.delete_repeats_button)
         self.delete_button.setEnabled(False)
         self.delete_repeats_button.setEnabled(False)
+        self.layout1.addWidget(self.up_button)
+        self.layout1.addWidget(self.current_path_label)
+        self.up_button.setEnabled(False)
+        self.current_path_label.setWordWrap(True)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
         self.open_button.clicked.connect(self.choose_folder)
@@ -48,6 +55,8 @@ class MainWindow(QMainWindow):
         self.clear_filters.clicked.connect(self.filter_cleaning)
         self.delete_button.clicked.connect(self.remove_selected_files)
         self.delete_repeats_button.clicked.connect(self.remove_all_repeats)
+        self.up_button.clicked.connect(self.go_up)
+        self.table.cellDoubleClicked.connect(self.open_folder)
         self.delete_nums.setPlaceholderText('Например: 1,3-5,8')
         self.scan_thread = None
         self.resize(960, 540)
@@ -257,6 +266,22 @@ class MainWindow(QMainWindow):
         else:
             QMessageBox.information(
                 self, 'Удаление завершено', f'Удалено файлов: {len(deleted_files)}')
+
+    def open_folder_from_table(self, row, column):
+        if self.scan_thread is not None and self.scan_thread.isRunning():
+            return
+        if not 0 <= row < len(self.visible_files):
+            return
+        folder_path = self.visible_files[row][0]
+        if os.path.isdir(folder_path):
+            self.choose_folder(folder_path)
+
+    def go_up(self):
+        if not self.current_path:
+            return
+        parent = os.path.dirname(self.current_path)
+        if parent != self.current_path:
+            self.choose_folder(parent)
 
 
 class FileTable(QTableWidget):
