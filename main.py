@@ -9,7 +9,7 @@ import os
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.res = None
+        self.res = None  # todo выделить всё, что можно сделать в QTD, в отдельный метод
         self.current_path = None
         self.visible_files = list()
         self.table = FileTable()
@@ -87,7 +87,8 @@ class MainWindow(QMainWindow):
         self.open_button.setEnabled(False)
         self.open_button.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
-        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
+        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(
+            self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
@@ -173,7 +174,7 @@ class MainWindow(QMainWindow):
                         self.table.setItem(j[1] - mn, 3, QTableWidgetItem(f'Группа {k}'))
         except FolderScan.ErrorFile as e:
             self.show_error(str(e))
-        except ValueError as e:
+        except ValueError:
             self.show_error('Введите число')
 
     def filter_cleaning(self):
@@ -182,7 +183,7 @@ class MainWindow(QMainWindow):
         self.delete_nums.clear()
         self.visible_files = self.res[:]
         self.table.setRowCount(len(self.res))
-        for i in range(len(self.res)):
+        for i in range(len(self.res)):  # todo засунуть этот цикл и цикл в show_result в отдельный метод
             self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
             self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(self.res[i][2]))
@@ -193,7 +194,7 @@ class MainWindow(QMainWindow):
             for file in group:
                 self.table.setItem(file[1], 3, QTableWidgetItem(f'Группа {k}'))
 
-        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}\n
+        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
 Суммарный вес файлов:
 {round(sum(i[1] for i in self.res) / 1024, 1)} КБ''')
         has_files = bool(self.res)
@@ -221,7 +222,7 @@ class MainWindow(QMainWindow):
                 return
             deleted_files, errors = FolderScan.delete_files(nums, files)
             self.finish_deletion(deleted_files, errors)
-        except FolderScan.ErrorFile as e:
+        except FolderScan.ErrorFile as e:  # может быть вызвана 208 и 222
             self.show_error(str(e))
 
     def remove_all_repeats(self):
