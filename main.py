@@ -163,9 +163,9 @@ class MainWindow(QMainWindow):
         self.visible_files = self.res[:]
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):
-            self.table.setItem(i, 0,QTableWidgetItem(os.path.basename(self.res[i][0])))
-            self.table.setItem(i, 1,QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
-            self.table.setItem(i, 2,QTableWidgetItem(self.res[i][2]))
+            self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
+            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 2, QTableWidgetItem(self.res[i][2]))
             self.table.setItem(i, 3, QTableWidgetItem('-'))
         k = 0
         for group in self.repeats:
@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
             message.exec()
         else:
             QMessageBox.information(
-                self,'Удаление завершено',f'Удалено файлов: {len(deleted_files)}')
+                self, 'Удаление завершено', f'Удалено файлов: {len(deleted_files)}')
 
 
 class FileTable(QTableWidget):
