@@ -10,6 +10,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.res = None
+        self.visible_files = list()
         self.table = FileTable()
         self.cont1 = QWidget()
         self.files_count = QLabel('''Количество файлов/папок: -
@@ -45,6 +46,9 @@ class MainWindow(QMainWindow):
         self.open_button.clicked.connect(self.choose_folder)
         self.file_selection.clicked.connect(self.show_slice)
         self.clear_filters.clicked.connect(self.filter_cleaning)
+        self.delete_button.clicked.connect(self.remove_selected_files)
+        self.delete_repeats_button.clicked.connect(self.remove_all_repeats)
+        self.delete_nums.setPlaceholderText('Например: 1,3-5,8')
         self.scan_thread = None
         self.resize(960, 540)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -73,6 +77,8 @@ class MainWindow(QMainWindow):
 
     def show_result(self, res, repeat, main):
         self.res, self.repeats, self.main = res, repeat, main
+        self.visible_files = self.res[:]
+        self.delete_nums.clear()
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
@@ -106,6 +112,8 @@ class MainWindow(QMainWindow):
         if self.res:
             self.file_selection.setEnabled(True)
             self.clear_filters.setEnabled(True)
+            self.delete_button.setEnabled(True)
+            self.delete_repeats_button.setEnabled(bool(self.repeats))
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
@@ -124,6 +132,8 @@ class MainWindow(QMainWindow):
                 raise FolderScan.ErrorFile('Размер файлов должен быть больше или равен 0')
             x1, x2 = float(x1) * 1024, float(x2) * 1024
             mn, mx = FolderScan.file_selection(x1, x2, self.res)
+            self.visible_files = self.res[mn:mx]
+            self.delete_nums.clear()
             k = 0
             self.table.setRowCount(mx - mn)
             for i in range(mn, mx):
@@ -133,7 +143,7 @@ class MainWindow(QMainWindow):
                 self.table.setItem(k, 3, QTableWidgetItem('-'))
                 k += 1
             self.files_count.setText(f'''Количество файлов/папок: {mx - mn}
-Суммарный вес файлов: {round(sum(i[-2] for i in self.res[mn : mx]) / 1024, 1)} КБ
+Суммарный вес файлов: {round(sum(i[-2] for i in self.res[mn: mx]) / 1024, 1)} КБ
 ''')
             k = 0
             for i in self.repeats:
@@ -147,16 +157,106 @@ class MainWindow(QMainWindow):
             self.show_error('Введите число')
 
     def filter_cleaning(self):
+        self.max_size.clear()
+        self.min_size.clear()
+        self.delete_nums.clear()
+        self.visible_files = self.res[:]
         self.table.setRowCount(len(self.res))
-        self.max_size.setText('')
-        self.min_size.setText('')
         for i in range(len(self.res)):
-            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
-            self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
-        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
-Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
-''')
+            self.table.setItem(i, 0,QTableWidgetItem(os.path.basename(self.res[i][0])))
+            self.table.setItem(i, 1,QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 2,QTableWidgetItem(self.res[i][2]))
+            self.table.setItem(i, 3, QTableWidgetItem('-'))
+        k = 0
+        for group in self.repeats:
+            k += 1
+            for file in group:
+                self.table.setItem(file[1], 3, QTableWidgetItem(f'Группа {k}'))
+
+        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}\n
+Суммарный вес файлов:
+{round(sum(i[1] for i in self.res) / 1024, 1)} КБ''')
+        has_files = bool(self.res)
+        self.file_selection.setEnabled(has_files)
+        self.clear_filters.setEnabled(has_files)
+        self.delete_button.setEnabled(has_files)
+        self.delete_repeats_button.setEnabled(bool(self.repeats))
+
+    def remove_selected_files(self):
+        try:
+            if not self.visible_files:
+                raise FolderScan.ErrorFile('В таблице нет файлов')
+            nums = self.delete_nums.text()
+            files = self.visible_files[:]
+            indices = FolderScan.parse_file_numbers(nums, files)
+            message = QMessageBox(self)
+            message.setWindowTitle('Удаление файлов')
+            message.setIcon(QMessageBox.Icon.Warning)
+            message.setText(f'''Удалить файлы: {len(indices)}?
+Файлы будут удалены с диска''')
+            message.setDetailedText('\n'.join(files[i][0] for i in indices))
+            message.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            message.setDefaultButton(QMessageBox.StandardButton.No)
+            if message.exec() != QMessageBox.StandardButton.Yes:
+                return
+            deleted_files, errors = FolderScan.delete_files(nums, files)
+            self.finish_deletion(deleted_files, errors)
+        except FolderScan.ErrorFile as e:
+            self.show_error(str(e))
+
+    def remove_all_repeats(self):
+        try:
+            if not self.repeats:
+                raise FolderScan.ErrorFile('Повторы не найдены')
+            files = [file for group in self.repeats for file in group[1:]]
+            nums = ','.join(str(i + 1) for i in range(len(files)))
+            FolderScan.parse_file_numbers(nums, files)
+
+            message = QMessageBox(self)
+            message.setWindowTitle('Удаление повторов')
+            message.setIcon(QMessageBox.Icon.Warning)
+            message.setText(f'''Удалить повторяющиеся файлы: {len(files)}?
+В каждой группе останется первый файл
+Операция относится ко всей папке, независимо от фильтра
+Файлы будут удалены с диска''')
+            message.setDetailedText('\n'.join(file[0] for file in files))
+            message.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            message.setDefaultButton(QMessageBox.StandardButton.No)
+            if message.exec() != QMessageBox.StandardButton.Yes:
+                return
+
+            deleted_files, errors = FolderScan.delete_repeats(self.repeats)
+            self.finish_deletion(deleted_files, errors)
+
+        except FolderScan.ErrorFile as e:
+            self.show_error(str(e))
+
+    def finish_deletion(self, deleted_files, errors):
+        deleted_paths = set(deleted_files)
+        self.res = [file for file in self.res if file[0] not in deleted_paths]
+        positions = {file[0]: i for i, file in enumerate(self.res)}
+
+        new_repeats = []
+        for group in self.repeats:
+            remaining = [(file[0], positions[file[0]]) for file in group if file[0] in positions]
+            if len(remaining) > 1:
+                new_repeats.append(remaining)
+
+        self.repeats = new_repeats
+        self.main = (self.main[0], sum(file[1] for file in self.res), self.main[2])
+        self.filter_cleaning()
+
+        if errors:
+            message = QMessageBox(self)
+            message.setWindowTitle('Результат удаления')
+            message.setIcon(QMessageBox.Icon.Warning)
+            message.setText(f'''Удалено файлов: {len(deleted_files)}
+Не удалось удалить: {len(errors)}''')
+            message.setDetailedText('\n'.join(errors))
+            message.exec()
+        else:
+            QMessageBox.information(
+                self,'Удаление завершено',f'Удалено файлов: {len(deleted_files)}')
 
 
 class FileTable(QTableWidget):
