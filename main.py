@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         self.current_path_label.setWordWrap(True)
         self.layout1.addWidget(self.table)
         self.setCentralWidget(self.cont1)
-        self.open_button.clicked.connect(self.choose_folder)
+        self.open_button.clicked.connect(lambda: self.choose_folder())
         self.file_selection.clicked.connect(self.show_slice)
         self.clear_filters.clicked.connect(self.filter_cleaning)
         self.delete_button.clicked.connect(self.remove_selected_files)
@@ -63,29 +63,40 @@ class MainWindow(QMainWindow):
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setStretchLastSection(True)
 
-    def choose_folder(self):
+    def choose_folder(self, folder_path=None):
+        if self.scan_thread is not None and self.scan_thread.isRunning():
+            return
         self.file_selection.setEnabled(False)
         self.clear_filters.setEnabled(False)
         self.delete_button.setEnabled(False)
         self.delete_repeats_button.setEnabled(False)
-        path = QFileDialog.getExistingDirectory()
+        if folder_path is None:
+            folder_path = QFileDialog.getExistingDirectory()
+        path = folder_path
         if not path:
             if self.res:
                 self.file_selection.setEnabled(True)
                 self.clear_filters.setEnabled(True)
                 self.delete_button.setEnabled(True)
-                self.delete_repeats_button.setEnabled(True)
+                self.delete_repeats_button.setEnabled(bool(self.repeats))
             return
+        path = os.path.abspath(path)
+        self.up_button.setEnabled(False)
         self.scan_thread = ScanThread(path)
         self.scan_thread.result_ready.connect(self.show_result)
         self.open_button.setEnabled(False)
         self.open_button.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
+        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
     def show_result(self, res, repeat, main):
         self.res, self.repeats, self.main = res, repeat, main
+        self.current_path = os.path.abspath(self.main[0])
+        self.current_path_label.setText(f'Текущая папка: {self.current_path}')
+        self.min_size.clear()
+        self.max_size.clear()
         self.visible_files = self.res[:]
         self.delete_nums.clear()
         self.table.setRowCount(len(self.res))
@@ -244,17 +255,14 @@ class MainWindow(QMainWindow):
         deleted_paths = set(deleted_files)
         self.res = [file for file in self.res if file[0] not in deleted_paths]
         positions = {file[0]: i for i, file in enumerate(self.res)}
-
         new_repeats = []
         for group in self.repeats:
             remaining = [(file[0], positions[file[0]]) for file in group if file[0] in positions]
             if len(remaining) > 1:
                 new_repeats.append(remaining)
-
         self.repeats = new_repeats
         self.main = (self.main[0], sum(file[1] for file in self.res), self.main[2])
         self.filter_cleaning()
-
         if errors:
             message = QMessageBox(self)
             message.setWindowTitle('Результат удаления')
@@ -264,10 +272,9 @@ class MainWindow(QMainWindow):
             message.setDetailedText('\n'.join(errors))
             message.exec()
         else:
-            QMessageBox.information(
-                self, 'Удаление завершено', f'Удалено файлов: {len(deleted_files)}')
+            QMessageBox.information(self, 'Удаление завершено', f'Удалено файлов: {len(deleted_files)}')
 
-    def open_folder_from_table(self, row, column):
+    def open_folder(self, row, column):
         if self.scan_thread is not None and self.scan_thread.isRunning():
             return
         if not 0 <= row < len(self.visible_files):
