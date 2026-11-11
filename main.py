@@ -121,7 +121,8 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, 'Сохранение', 'Результат сохранён в базу данных')
 
     def load_result(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Загрузить результат', '', 'База SQLite (*.db)')
+        file_path, _ = QFileDialog.getOpenFileName(self,
+                                                   'Загрузить результат', '', 'База SQLite (*.db)')
         if not file_path:
             return
         try:
@@ -156,7 +157,8 @@ class MainWindow(QMainWindow):
         self.open_button.setEnabled(False)
         self.open_button.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
-        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
+        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(
+            self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
@@ -216,7 +218,8 @@ class MainWindow(QMainWindow):
             self.table.setRowCount(mx - mn)
             for i in range(mn, mx):
                 self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-                self.table.setItem(k, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
+                self.table.setItem(k, 1, QTableWidgetItem(
+                    '-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
                 self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
                 self.table.setItem(k, 3, QTableWidgetItem('-'))
                 k += 1
@@ -254,7 +257,9 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
-            self.table.setItem(i, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 1,
+                               QTableWidgetItem('-1' if self.res[i][1] < 0
+                                                else str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
             self.table.setItem(i, 3, QTableWidgetItem('-'))
         k = 0
