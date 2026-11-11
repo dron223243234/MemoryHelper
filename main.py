@@ -1,67 +1,112 @@
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
     QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit
-from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRectF
+from PyQt6.QtGui import QIcon, QPainter, QFont
+from PyQt6.QtSvg import QSvgRenderer
 import sys
 import FolderScan
 import os
+from random import choice
+
+
+class BackgroundWidget(QWidget):
+    def __init__(self, image_path):
+        super().__init__()
+        self.renderer = QSvgRenderer(image_path, self)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        size = min(320, self.width(), self.height())
+        x = (self.width() - size) / 2
+        y = (self.height() - size) / 2
+        painter = QPainter(self)
+        try:
+            self.renderer.render(painter, QRectF(x, y, size, size))
+        finally:
+            painter.end()
+
+
+class Game(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+        self.make_funny()
+        self.button_clear.clicked.connect(self.clear_field)
+        self.button_step.clicked.connect(self.enemy_step)
+
+    def clear_field(self):
+        self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+        for row in range(3):
+            for col in range(3):
+                item = self.square.item(row, col)
+                item.setText('')
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
+
+    def enemy_step(self):
+        try:
+            x, y = choice(self.start)
+            item = self.square.item(x, y)
+            if item is not None and item.text().strip() != '':
+                self.enemy_step()
+                self.start.remove((x, y))
+            else:
+                item = QTableWidgetItem('O')
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.square.setItem(x, y, item)
+                self.start.remove((x, y))
+
+        except IndexError:
+            self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+            self.clear_field()
+
+    def make_funny(self):
+        self.cont1 = QWidget()
+        self.layout1 = QVBoxLayout(self.cont1)
+        self.setCentralWidget(self.cont1)
+        self.square = QTableWidget()
+        self.layout1.addWidget(self.square)
+        self.square.setColumnCount(3)
+        self.square.setRowCount(3)
+        self.square.setHorizontalHeaderLabels(['', '', ''])
+        self.square.setVerticalHeaderLabels(['', '', ''])
+        self.square.setColumnWidth(0, 100)
+        self.square.setRowHeight(0, 100)
+        self.square.setColumnWidth(1, 100)
+        self.square.setRowHeight(1, 100)
+        self.square.setColumnWidth(2, 100)
+        self.square.setRowHeight(2, 100)
+        self.square.setFont(QFont('Arial', 20))
+        for row in range(3):
+            for col in range(3):
+                item = QTableWidgetItem('')
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.square.setItem(row, col, item)
+        self.button_clear = QPushButton('Очистить поле')
+        self.button_step = QPushButton('Ход соперника')
+        self.layout1.addWidget(self.button_clear)
+        self.layout1.addWidget(self.button_step)
+        self.resize(330, 420)
+        self.setWindowTitle('Крестики-Нолики')
+
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.res = None  # todo выделить всё, что можно сделать в QTD, в отдельный метод
+        self.res = None
         self.current_path = None
         self.visible_files = list()
-        self.table = FileTable()
-        self.cont1 = QWidget()
-        self.files_count = QLabel('''Количество файлов/папок: -
-Суммарный вес файлов: -
-''')
-        self.min_size = QLineEdit()
-        self.max_size = QLineEdit()
-        self.delete_nums = QLineEdit()
-        self.delete_button = QPushButton('Удалить файлы')
-        self.delete_repeats_button = QPushButton('Удалить все повторы')
-        self.file_selection = QPushButton('Выбрать файлы по размеру')
-        self.open_button = QPushButton('Выбрать папку')
-        self.up_button = QPushButton('На уровень выше')
-        self.current_path_label = QLabel('Текущая папка: не выбрана')
-        self.clear_filters = QPushButton('Сбросить фильтер')
-        self.layout1 = QVBoxLayout(self.cont1)
-        self.layout1.addWidget(self.open_button)
-        self.layout1.addWidget(self.files_count)
-        self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
-        self.layout1.addWidget(self.min_size)
-        self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
-        self.layout1.addWidget(self.max_size)
-        self.layout1.addWidget(self.file_selection)
-        self.layout1.addWidget(self.clear_filters)
-        self.file_selection.setEnabled(False)
-        self.clear_filters.setEnabled(False)
-        self.layout1.addWidget(QLabel('Номера файлов для удаления:'))
-        self.layout1.addWidget(self.delete_nums)
-        self.layout1.addWidget(self.delete_button)
-        self.layout1.addWidget(self.delete_repeats_button)
-        self.delete_button.setEnabled(False)
-        self.delete_repeats_button.setEnabled(False)
-        self.layout1.addWidget(self.up_button)
-        self.layout1.addWidget(self.current_path_label)
-        self.up_button.setEnabled(False)
-        self.current_path_label.setWordWrap(True)
-        self.layout1.addWidget(self.table)
-        self.setCentralWidget(self.cont1)
+        self.scan_thread = None
+        self.make_funny()
         self.open_button.clicked.connect(lambda: self.choose_folder())
         self.file_selection.clicked.connect(self.show_slice)
         self.clear_filters.clicked.connect(self.filter_cleaning)
         self.delete_button.clicked.connect(self.remove_selected_files)
         self.delete_repeats_button.clicked.connect(self.remove_all_repeats)
         self.up_button.clicked.connect(self.go_up)
+        self.game_button.clicked.connect(self.game.show)
         self.table.cellDoubleClicked.connect(self.open_folder)
-        self.delete_nums.setPlaceholderText('Например: 1,3-5,8')
-        self.scan_thread = None
-        self.resize(960, 540)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setStretchLastSection(True)
 
     def choose_folder(self, folder_path=None):
         if self.scan_thread is not None and self.scan_thread.isRunning():
@@ -103,7 +148,7 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
             self.table.setItem(i, 3, QTableWidgetItem('-'))
         if self.repeats:
@@ -123,7 +168,7 @@ class MainWindow(QMainWindow):
         self.delete_button.setEnabled(True)
         self.delete_repeats_button.setEnabled(True)
         self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
-Суммарный вес файлов: {round(sum(i[-2] for i in self.res) / 1024, 1)} КБ
+Суммарный вес файлов: {round(sum(i[1] for i in self.res if i[1] >= 0) / 1024, 1)} КБ
 ''')
         message.exec()
 
@@ -148,7 +193,7 @@ class MainWindow(QMainWindow):
             if not x1:
                 x1 = 0
             if not x2:
-                x2 = self.res[0][1] / 1024
+                x2 = max(0, self.res[0][1]) / 1024
             if float(x1) < 0 or float(x2) < 0:
                 raise FolderScan.ErrorFile('Размер файлов должен быть больше или равен 0')
             x1, x2 = float(x1) * 1024, float(x2) * 1024
@@ -159,12 +204,12 @@ class MainWindow(QMainWindow):
             self.table.setRowCount(mx - mn)
             for i in range(mn, mx):
                 self.table.setItem(k, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-                self.table.setItem(k, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+                self.table.setItem(k, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
                 self.table.setItem(k, 2, QTableWidgetItem(str(self.res[i][2])))
                 self.table.setItem(k, 3, QTableWidgetItem('-'))
                 k += 1
             self.files_count.setText(f'''Количество файлов/папок: {mx - mn}
-Суммарный вес файлов: {round(sum(i[-2] for i in self.res[mn: mx]) / 1024, 1)} КБ
+Суммарный вес файлов: {round(sum(i[1] for i in self.res[mn: mx] if i[1] >= 0) / 1024, 1)} КБ
 ''')
             k = 0
             for i in self.repeats:
@@ -185,7 +230,7 @@ class MainWindow(QMainWindow):
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):  # todo засунуть этот цикл и цикл в show_result в отдельный метод
             self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
-            self.table.setItem(i, 1, QTableWidgetItem(str(round(self.res[i][1] / 1024, 1))))
+            self.table.setItem(i, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
             self.table.setItem(i, 2, QTableWidgetItem(self.res[i][2]))
             self.table.setItem(i, 3, QTableWidgetItem('-'))
         k = 0
@@ -195,8 +240,7 @@ class MainWindow(QMainWindow):
                 self.table.setItem(file[1], 3, QTableWidgetItem(f'Группа {k}'))
 
         self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
-Суммарный вес файлов:
-{round(sum(i[1] for i in self.res) / 1024, 1)} КБ''')
+Суммарный вес файлов: {round(sum(i[1] for i in self.res if i[1] >= 0) / 1024, 1)} КБ''')
         has_files = bool(self.res)
         self.file_selection.setEnabled(has_files)
         self.clear_filters.setEnabled(has_files)
@@ -262,7 +306,7 @@ class MainWindow(QMainWindow):
             if len(remaining) > 1:
                 new_repeats.append(remaining)
         self.repeats = new_repeats
-        self.main = (self.main[0], sum(file[1] for file in self.res), self.main[2])
+        self.main = (self.main[0], sum(file[1] for file in self.res if file[1] >= 0), self.main[2])
         self.filter_cleaning()
         if errors:
             message = QMessageBox(self)
@@ -290,6 +334,56 @@ class MainWindow(QMainWindow):
         parent = os.path.dirname(self.current_path)
         if parent != self.current_path:
             self.choose_folder(parent)
+
+    def make_funny(self):
+        self.table = FileTable()
+        image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'folderscan-logo.svg')
+        self.cont1 = BackgroundWidget(image_path)
+        self.files_count = QLabel('''Количество файлов/папок: -
+    Суммарный вес файлов: -
+    ''')
+        self.min_size = QLineEdit()
+        self.max_size = QLineEdit()
+        self.delete_nums = QLineEdit()
+        self.delete_button = QPushButton('Удалить файлы')
+        self.delete_repeats_button = QPushButton('Удалить все повторы')
+        self.file_selection = QPushButton('Выбрать файлы по размеру')
+        self.open_button = QPushButton('Выбрать папку')
+        self.up_button = QPushButton('На уровень выше')
+        self.clear_filters = QPushButton('Сбросить фильтер')
+        self.game_button = QPushButton('Занять себя')
+        self.current_path_label = QLabel('Текущая папка: не выбрана')
+        self.layout1 = QVBoxLayout(self.cont1)
+        self.layout1.addWidget(self.open_button)
+        self.layout1.addWidget(self.files_count)
+        self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
+        self.layout1.addWidget(self.min_size)
+        self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
+        self.layout1.addWidget(self.max_size)
+        self.layout1.addWidget(self.file_selection)
+        self.layout1.addWidget(self.clear_filters)
+        self.layout1.addWidget(QLabel('Номера файлов для удаления:'))
+        self.layout1.addWidget(self.delete_nums)
+        self.layout1.addWidget(self.delete_button)
+        self.layout1.addWidget(self.delete_repeats_button)
+        self.layout1.addWidget(self.up_button)
+        self.layout1.addWidget(self.game_button)
+        self.layout1.addWidget(self.current_path_label)
+        self.layout1.addWidget(self.table)
+        self.file_selection.setEnabled(False)
+        self.clear_filters.setEnabled(False)
+        self.delete_button.setEnabled(False)
+        self.delete_repeats_button.setEnabled(False)
+        self.up_button.setEnabled(False)
+        self.current_path_label.setWordWrap(True)
+        self.delete_nums.setPlaceholderText('Например: 1,3-5,8')
+        self.setCentralWidget(self.cont1)
+        self.resize(960, 540)
+        self.setWindowIcon(QIcon('folderscan-logo.svg'))
+        self.setWindowTitle('FolderScan')
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.game = Game()
 
 
 class FileTable(QTableWidget):
