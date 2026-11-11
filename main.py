@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
                 return
             deleted_files, errors = FolderScan.delete_files(nums, files)
             self.finish_deletion(deleted_files, errors)
-        except FolderScan.ErrorFile as e:  # может быть вызвана 208 и 222
+        except FolderScan.ErrorFile as e:
             self.show_error(str(e))
 
     def remove_all_repeats(self):
