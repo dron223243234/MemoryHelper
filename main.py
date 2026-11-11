@@ -169,18 +169,7 @@ class MainWindow(QMainWindow):
         self.max_size.clear()
         self.visible_files = self.res[:]
         self.delete_nums.clear()
-        self.table.setRowCount(len(self.res))
-        for i in range(len(self.res)):
-            self.table.setItem(i, 0, QTableWidgetItem(str(os.path.basename(self.res[i][0]))))
-            self.table.setItem(i, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
-            self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
-            self.table.setItem(i, 3, QTableWidgetItem('-'))
-        if self.repeats:
-            k = 0
-            for i in self.repeats:
-                k += 1
-                for j in i:
-                    self.table.setItem(j[1], 3, QTableWidgetItem(f'Группа {k}'))
+        self.fill_table()
         message = QMessageBox(self)
         message.setIcon(QMessageBox.Icon.Information)
         message.setWindowTitle('Сканирование папки')
@@ -250,25 +239,29 @@ class MainWindow(QMainWindow):
         self.min_size.clear()
         self.delete_nums.clear()
         self.visible_files = self.res[:]
+        self.fill_table()
+
+        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
+Суммарный вес файлов: {round(sum(i[1] for i in self.res if i[1] >= 0) / 1024, 1)} КБ''')
+
+        has_files = bool(self.res)
+        self.file_selection.setEnabled(has_files)
+        self.clear_filters.setEnabled(has_files)
+        self.delete_button.setEnabled(has_files and not self.loaded_result)
+        self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
+
+    def fill_table(self):
         self.table.setRowCount(len(self.res))
-        for i in range(len(self.res)):  # todo засунуть этот цикл и цикл в show_result в отдельный метод
+        for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
             self.table.setItem(i, 1, QTableWidgetItem('-1' if self.res[i][1] < 0 else str(round(self.res[i][1] / 1024, 1))))
-            self.table.setItem(i, 2, QTableWidgetItem(self.res[i][2]))
+            self.table.setItem(i, 2, QTableWidgetItem(str(self.res[i][2])))
             self.table.setItem(i, 3, QTableWidgetItem('-'))
         k = 0
         for group in self.repeats:
             k += 1
             for file in group:
                 self.table.setItem(file[1], 3, QTableWidgetItem(f'Группа {k}'))
-
-        self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
-Суммарный вес файлов: {round(sum(i[1] for i in self.res if i[1] >= 0) / 1024, 1)} КБ''')
-        has_files = bool(self.res)
-        self.file_selection.setEnabled(has_files)
-        self.clear_filters.setEnabled(has_files)
-        self.delete_button.setEnabled(has_files and not self.loaded_result)
-        self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
 
     def remove_selected_files(self):
         try:
