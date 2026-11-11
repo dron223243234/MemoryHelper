@@ -1,3 +1,5 @@
+"""Графический интерфейс FolderScan, поток сканирования и окно игры."""
+
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
     QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRectF
@@ -12,11 +14,20 @@ from random import choice
 
 
 class BackgroundWidget(QWidget):
+    """Виджет с фоновым SVG-изображением по центру."""
     def __init__(self, image_path):
+        """Создать виджет и загрузить SVG-изображение.
+
+        :param image_path: путь к файлу SVG.
+        """
         super().__init__()
         self.renderer = QSvgRenderer(image_path, self)
 
     def paintEvent(self, event):
+        """Нарисовать изображение по центру виджета с размером не более 320 пикселей.
+
+        :param event: событие перерисовки виджета.
+        """
         super().paintEvent(event)
         size = min(320, self.width(), self.height())
         x = (self.width() - size) / 2
@@ -29,7 +40,9 @@ class BackgroundWidget(QWidget):
 
 
 class Game(QMainWindow):
+    """Окно игры «Крестики-нолики» с ручным вводом и случайным ходом соперника."""
     def __init__(self):
+        """Создать игровое окно и подключить кнопки."""
         super().__init__()
         self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
         self.make_funny()
@@ -37,6 +50,7 @@ class Game(QMainWindow):
         self.button_step.clicked.connect(self.enemy_step)
 
     def clear_field(self):
+        """Очистить поле и разрешить редактирование всех клеток."""
         self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
         for row in range(3):
             for col in range(3):
@@ -45,6 +59,7 @@ class Game(QMainWindow):
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
 
     def enemy_step(self):
+        """Поставить O в случайную свободную клетку или очистить заполненное поле."""
         while self.start:
             x, y = choice(self.start)
             self.start.remove((x, y))
@@ -58,6 +73,7 @@ class Game(QMainWindow):
         self.clear_field()
 
     def make_funny(self):
+        """Создать игровое поле, кнопки и настроить окно игры."""
         self.cont1 = QWidget()
         self.layout1 = QVBoxLayout(self.cont1)
         self.setCentralWidget(self.cont1)
@@ -82,7 +98,9 @@ class Game(QMainWindow):
 
 
 class MainWindow(QMainWindow):
+    """Главное окно сканирования папок и управления результатами."""
     def __init__(self):
+        """Создать интерфейс, начальное состояние и подключить обработчики событий."""
         super().__init__()
         self.res = None
         self.loaded_result = False
@@ -102,6 +120,7 @@ class MainWindow(QMainWindow):
         self.table.cellDoubleClicked.connect(self.open_folder)
 
     def save_result(self):
+        """Сохранить текущий результат в выбранную базу SQLite."""
         if not self.res:
             QMessageBox.information(self, 'Сохранение', 'Нет результата для сохранения')
             return
@@ -121,6 +140,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, 'Сохранение', 'Результат сохранён в базу данных')
 
     def load_result(self):
+        """Загрузить результат из выбранной базы SQLite и отключить удаление файлов."""
         file_path, _ = QFileDialog.getOpenFileName(self,
                                                    'Загрузить результат', '', 'База SQLite (*.db)')
         if not file_path:
@@ -134,6 +154,10 @@ class MainWindow(QMainWindow):
         self.up_button.setEnabled(os.path.dirname(self.current_path) != self.current_path)
 
     def choose_folder(self, folder_path=None):
+        """Выбрать папку и запустить сканирование в отдельном потоке.
+
+        :param folder_path: путь к папке; если None, открыть диалог выбора папки.
+        """
         if self.scan_thread is not None and self.scan_thread.isRunning():
             return
         self.file_selection.setEnabled(False)
@@ -158,11 +182,18 @@ class MainWindow(QMainWindow):
         self.open_button.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
         self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(
-            self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
+        self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
     def show_result(self, res, repeat, main, from_file=False):
+        """Показать результат сканирования или загрузки из базы.
+
+        :param res: список элементов с путями, размерами в байтах и датами изменения.
+        :param repeat: группы дубликатов с путями и индексами элементов в res.
+        :param main: путь папки, суммарный размер и дата изменения.
+        :param from_file: True, если результат загружен из базы и удаление нужно отключить.
+        """
         self.loaded_result = from_file
         self.res, self.repeats, self.main = res, repeat, main
         self.current_path = os.path.abspath(self.main[0])
@@ -188,6 +219,10 @@ class MainWindow(QMainWindow):
         message.exec()
 
     def show_error(self, e):
+        """Показать ошибку и восстановить доступные действия для прежнего результата.
+
+        :param e: текст сообщения об ошибке.
+        """
         QMessageBox.critical(self, 'Ошибка', e)
         self.open_button.setText('Выбрать папку')
         if self.res:
@@ -197,11 +232,16 @@ class MainWindow(QMainWindow):
             self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
 
     def closeEvent(self, event):
+        """Запретить закрытие окна во время сканирования.
+
+        :param event: событие закрытия окна.
+        """
         if self.scan_thread is not None and self.scan_thread.isRunning():
             event.ignore()
             QMessageBox.critical(self, 'Ошибка', 'Сканирование ещё выполняется. Дождитесь завершения.')
 
     def show_slice(self):
+        """Отфильтровать элементы по размеру в КБ и обновить таблицу и статистику."""
         try:
             x1, x2 = self.min_size.text(), self.max_size.text()
             if not x1:
@@ -238,6 +278,7 @@ class MainWindow(QMainWindow):
             self.show_error('Введите число')
 
     def filter_cleaning(self):
+        """Сбросить фильтр и показать полный список элементов и общую статистику."""
         self.max_size.clear()
         self.min_size.clear()
         self.delete_nums.clear()
@@ -254,6 +295,7 @@ class MainWindow(QMainWindow):
         self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
 
     def fill_table(self):
+        """Заполнить таблицу полным результатом и номерами групп дубликатов."""
         self.table.setRowCount(len(self.res))
         for i in range(len(self.res)):
             self.table.setItem(i, 0, QTableWidgetItem(os.path.basename(self.res[i][0])))
@@ -269,6 +311,7 @@ class MainWindow(QMainWindow):
                 self.table.setItem(file[1], 3, QTableWidgetItem(f'Группа {k}'))
 
     def remove_selected_files(self):
+        """Запросить подтверждение и удалить файлы по номерам строк текущей таблицы."""
         try:
             if not self.visible_files:
                 raise FolderScan.ErrorFile('В таблице нет файлов')
@@ -291,6 +334,7 @@ class MainWindow(QMainWindow):
             self.show_error(str(e))
 
     def remove_all_repeats(self):
+        """Запросить подтверждение и удалить дубликаты во всей папке, оставив первый файл каждой группы."""
         try:
             if not self.repeats:
                 raise FolderScan.ErrorFile('Повторы не найдены')
@@ -318,6 +362,11 @@ class MainWindow(QMainWindow):
             self.show_error(str(e))
 
     def finish_deletion(self, deleted_files, errors):
+        """Обновить результат после удаления файлов и показать сведения об ошибках.
+
+        :param deleted_files: список путей успешно удалённых файлов.
+        :param errors: список сообщений об ошибках удаления.
+        """
         deleted_paths = set(deleted_files)
         self.res = [file for file in self.res if file[0] not in deleted_paths]
         positions = {file[0]: i for i, file in enumerate(self.res)}
@@ -341,6 +390,11 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, 'Удаление завершено', f'Удалено файлов: {len(deleted_files)}')
 
     def open_folder(self, row, column):
+        """Запустить сканирование каталога, выбранного двойным щелчком в таблице.
+
+        :param row: индекс строки в текущем отображаемом списке.
+        :param column: индекс столбца, по которому выполнен двойной щелчок.
+        """
         if self.scan_thread is not None and self.scan_thread.isRunning():
             return
         if not 0 <= row < len(self.visible_files):
@@ -350,6 +404,7 @@ class MainWindow(QMainWindow):
             self.choose_folder(folder_path)
 
     def go_up(self):
+        """Запустить сканирование родительской папки текущего каталога."""
         if not self.current_path:
             return
         parent = os.path.dirname(self.current_path)
@@ -357,6 +412,7 @@ class MainWindow(QMainWindow):
             self.choose_folder(parent)
 
     def make_funny(self):
+        """Создать элементы главного окна и задать их начальное состояние."""
         self.table = FileTable()
         image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'folderscan-logo.svg')
         self.cont1 = BackgroundWidget(image_path)
@@ -412,7 +468,9 @@ class MainWindow(QMainWindow):
 
 
 class FileTable(QTableWidget):
+    """Таблица результатов с четырьмя столбцами без редактирования ячеек."""
     def __init__(self):
+        """Настроить столбцы таблицы и запретить редактирование."""
         super().__init__()
         self.setColumnCount(4)
         self.setRowCount(1)
@@ -421,14 +479,20 @@ class FileTable(QTableWidget):
 
 
 class ScanThread(QThread):
+    """Поток сканирования с сигналами результата и сообщения об ошибке."""
     result_ready = pyqtSignal(object, object, object)
     error = pyqtSignal(str)
 
     def __init__(self, path):
+        """Создать поток для сканирования выбранной папки.
+
+        :param path: путь к папке для сканирования.
+        """
         super().__init__()
         self.path = path
 
     def run(self):
+        """Выполнить сканирование и передать результат либо текст ошибки через сигнал."""
         try:
             self.result_ready.emit(*FolderScan.scan(self.path))
         except Exception as e:
@@ -436,6 +500,12 @@ class ScanThread(QThread):
 
 
 def except_hook(cls, exception, traceback):
+    """Передать необработанное исключение стандартному обработчику Python.
+
+    :param cls: класс исключения.
+    :param exception: объект исключения.
+    :param traceback: объект трассировки исключения.
+    """
     sys.__excepthook__(cls, exception, traceback)
 
 

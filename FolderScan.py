@@ -1,13 +1,22 @@
+"""Сканирование папок, поиск дубликатов, фильтрация и удаление файлов."""
+
 from os import scandir, path, remove
 from datetime import datetime
 from hashlib import sha256
 
 
-class ErrorFile(Exception):  # todo сделать отдельный файл для ошибок
+class ErrorFile(Exception):
+    """Ошибка проверки входных данных или выполнения операций сканера."""
     pass
 
 
 def folder_size(folder_path):
+    """Рекурсивно подсчитать размер доступных файлов внутри папки.
+
+    :param folder_path: путь к папке.
+    :return: суммарный размер доступных файлов в байтах.
+    :raises OSError: если не удалось открыть исходную папку для обхода.
+    """
     size = 0
     with scandir(folder_path) as files:
         for file in files:
@@ -24,7 +33,21 @@ def folder_size(folder_path):
 
     return size
 
+
 def scan(folder_path):
+    """Просканировать содержимое папки и найти дубликаты непосредственных файлов.
+
+    Размеры вложенных каталогов рассчитываются рекурсивно.
+    Для недоступных элементов размер и дата отмечаются как -1 и строка «-1».
+    Неизвестные размеры не учитываются в общей сумме.
+
+    :param folder_path: путь к папке для сканирования.
+    :return: кортеж (res, repeats, main), где res содержит тройки
+        (путь, размер в байтах, дата), отсортированные по убыванию размера;
+        repeats содержит группы пар (путь, индекс в res);
+        main содержит путь папки, суммарный размер и дату изменения.
+    :raises ErrorFile: если путь неверен, папка недоступна или список элементов пуст.
+    """
     res = list()
     repeats = dict()
     sizes = dict()
@@ -98,7 +121,16 @@ def scan(folder_path):
 
     return res, repeats, (path.normpath(folder_path), sum_size, folder_date)
 
+
 def file_selection(down, up, files):
+    """Найти границы среза элементов с размерами в заданном диапазоне.
+
+    :param down: минимальный размер в байтах включительно.
+    :param up: максимальный размер в байтах включительно.
+    :param files: непустой список элементов, отсортированный по убыванию размера.
+    :return: пара индексов начала и конца среза; конец не включается.
+    :raises ErrorFile: если нижняя граница больше верхней.
+    """
     ln = len(files)
     if down > up:
         raise ErrorFile('Нижняя граница больше верхней')
@@ -136,6 +168,17 @@ def file_selection(down, up, files):
 
 
 def parse_file_numbers(nums, files):
+    """Проверить номера файлов и преобразовать их в индексы списка.
+
+    Проверка всех выбранных путей выполняется без удаления файлов.
+
+    :param nums: строка номеров и диапазонов через запятую, например «1, 3-5, 8».
+        Нумерация начинается с единицы.
+    :param files: список элементов, к которому относятся введённые номера.
+    :return: отсортированный список уникальных индексов, начиная с нуля.
+    :raises ErrorFile: если ввод пуст, номера неверны, выходят за границы
+        списка или выбранный путь не является доступным файлом.
+    """
     if not nums.strip():
         raise ErrorFile('Введите номера файлов для удаления')
     selected = set()
@@ -161,6 +204,15 @@ def parse_file_numbers(nums, files):
 
 
 def delete_files(nums, files):
+    """Удалить выбранные файлы с диска после проверки всех номеров.
+
+    Удаление выполняется без перемещения в корзину. Исходный список не изменяется.
+
+    :param nums: строка номеров и диапазонов; нумерация начинается с единицы.
+    :param files: список элементов для выбора файлов.
+    :return: пара списков путей успешно удалённых файлов и сообщений об ошибках.
+    :raises ErrorFile: если номера или выбранные пути не прошли проверку.
+    """
     indices = parse_file_numbers(nums, files)
     deleted_files = list()
     errors = list()
@@ -176,6 +228,12 @@ def delete_files(nums, files):
 
 
 def delete_repeats(repeats):
+    """Удалить дубликаты, оставив первый файл в каждой группе.
+
+    :param repeats: группы дубликатов, содержащие пары (путь, индекс в результате).
+    :return: пара списков путей успешно удалённых файлов и сообщений об ошибках.
+    :raises ErrorFile: если один из выбранных путей не прошёл проверку.
+    """
     files = []
     for group in repeats:
         for file in group[1:]:
@@ -184,4 +242,3 @@ def delete_repeats(repeats):
         return [], []
     nums = ','.join(str(i + 1) for i in range(len(files)))
     return delete_files(nums, files)
-

@@ -1,8 +1,19 @@
+"""Сохранение и загрузка одного результата сканирования в базе SQLite."""
+
 import sqlite3
 from pathlib import Path
 
 
 def save_result(file_path, res, repeats, main):
+    """Сохранить результат сканирования в базу SQLite, заменив прежний результат.
+
+    :param file_path: путь к файлу базы данных.
+    :param res: список троек (путь, размер в байтах, дата изменения).
+    :param repeats: группы дубликатов с парами (путь, индекс в res).
+    :param main: путь папки, суммарный размер и дата изменения.
+        Суммарный размер для записи пересчитывается по неотрицательным размерам res.
+    :raises sqlite3.Error: если не удалось открыть базу или записать данные.
+    """
     groups = {}
     for number, group in enumerate(repeats, 1):
         for file in group:
@@ -81,6 +92,15 @@ def save_result(file_path, res, repeats, main):
 
 
 def load_result(file_path):
+    """Загрузить результат из базы SQLite в режиме только для чтения.
+
+    :param file_path: путь к файлу базы данных.
+    :return: кортеж (res, repeats, main) со списком элементов, группами
+        дубликатов и сведениями о просканированной папке.
+    :raises ValueError: если сведения о папке отсутствуют или список элементов пуст.
+    :raises sqlite3.Error: если база недоступна или не содержит ожидаемых таблиц.
+    :raises OSError: если не удалось обработать путь к базе данных.
+    """
     uri = Path(file_path).resolve().as_uri() + '?mode=ro'
     connection = sqlite3.connect(uri, uri=True)
     try:
