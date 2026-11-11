@@ -111,6 +111,8 @@ class MainWindow(QMainWindow):
         self.save_button.clicked.connect(self.save_result)
         self.load_button.clicked.connect(self.load_result)
         self.game_button.clicked.connect(self.game.show)
+        # lambda нужна: clicked передаёт аргумент checked (bool),
+        # и он попал бы в folder_path.
         self.open_button.clicked.connect(lambda: self.choose_folder())
         self.file_selection.clicked.connect(self.show_slice)
         self.clear_filters.clicked.connect(self.filter_cleaning)
@@ -200,6 +202,9 @@ class MainWindow(QMainWindow):
         self.current_path_label.setText(f'Текущая папка: {self.current_path}')
         self.min_size.clear()
         self.max_size.clear()
+        # Строка таблицы i соответствует visible_files[i]. Номера для удаления и
+        # двойной щелчок работают именно с этим списком, а не с res
+        # Сортировку таблицы включать нельзя: порядок строк разойдётся со списком
         self.visible_files = self.res[:]
         self.delete_nums.clear()
         self.fill_table()
@@ -338,6 +343,8 @@ class MainWindow(QMainWindow):
         try:
             if not self.repeats:
                 raise FolderScan.ErrorFile('Повторы не найдены')
+            # Берутся все группы папки, фильтр размера не учитывается,
+            # в каждой группе остаётся первый файл
             files = [file for group in self.repeats for file in group[1:]]
             nums = ','.join(str(i + 1) for i in range(len(files)))
             FolderScan.parse_file_numbers(nums, files)
