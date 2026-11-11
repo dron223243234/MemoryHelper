@@ -51,6 +51,8 @@ def scan(folder_path):
     res = list()
     repeats = dict()
     sizes = dict()
+    # sizes: размер -> [(путь, индекс в res)]. Хешируем только файлы с совпавшим
+    # размером: файлы разного размера не могут быть дубликатами
     if not path.isdir(folder_path):
         raise ErrorFile('Указан неправильный путь до папки')
     try:
@@ -58,11 +60,14 @@ def scan(folder_path):
             for file in files:
                 try:
                     if file.is_file():
+                        # Открываем файл только для проверки доступа. Это дорого на больших папках
+                        # и сетевых дисках, зато недоступные файлы не попадают в сумму
                         with open(file.path, 'rb'):
                             pass
                         inf = file.stat()
                         m = inf.st_size
                         date = datetime.fromtimestamp(inf.st_mtime).strftime('%d.%m.%Y %H:%M:%S')
+                        # -1 и '-1' означают «размер/дата неизвестны»
                         res.append((file.path, m, date))
                         if m not in sizes:
                             sizes[m] = list()
@@ -72,7 +77,8 @@ def scan(folder_path):
                         m = folder_size(file.path)
                         date = datetime.fromtimestamp(file.stat().st_mtime).strftime('%d.%m.%Y %H:%M:%S')
                         res.append((file.path, m, date))
-
+                # Ошибка во вложенной папке гасится, и она считается как 0 байт
+                # Поэтому итоговый размер может быть занижен
                 except (OSError, ValueError, OverflowError):
                     res.append((file.path, -1, '-1'))
 
@@ -80,7 +86,8 @@ def scan(folder_path):
         raise ErrorFile(f'Не удалось прочитать содержимое папки: {e}') from None
     if not res:
         raise ErrorFile('В указанной папке нет файлов')
-
+    # Индексы в sizes относятся к res ДО сортировки. Ниже res сортируется,
+    # поэтому индексы в repeats пересчитываются через positions
     for files in sizes.values():
         if len(files) < 2:
             continue
@@ -95,6 +102,8 @@ def scan(folder_path):
                 file_hash = file_hash.hexdigest()
 
             except OSError:
+                # Файл не прочитался при хешировании: помечаем как недоступный
+                # и не включаем в группы дубликатов
                 res[file_path[1]] = (file_path[0], -1, '-1')
                 continue
             if file_hash not in repeats:
@@ -103,7 +112,9 @@ def scan(folder_path):
 
     sum_size = sum(file[1] for file in res if file[1] >= 0)
     repeats = [files for files in repeats.values() if len(files) > 1]
+    # Порядок по убыванию размера нужен функции file_selection (бинарный поиск)
     res.sort(key=lambda x: x[1], reverse=True)
+    # После сортировки старые индексы недействительны. Находим новый индекс по пути
     positions = {}
     i = 0
     for file in res:

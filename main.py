@@ -427,7 +427,7 @@ class MainWindow(QMainWindow):
         self.file_selection = QPushButton('Выбрать файлы по размеру')
         self.open_button = QPushButton('Выбрать папку')
         self.up_button = QPushButton('На уровень выше')
-        self.clear_filters = QPushButton('Сбросить фильтер')
+        self.clear_filters = QPushButton('Сбросить фильтр')
         self.save_button = QPushButton('Сохранить результат в .db')
         self.load_button = QPushButton('Загрузить результат из .db')
         self.game_button = QPushButton('Занять себя')

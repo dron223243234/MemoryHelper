@@ -14,6 +14,8 @@ def save_result(file_path, res, repeats, main):
         Суммарный размер для записи пересчитывается по неотрицательным размерам res.
     :raises sqlite3.Error: если не удалось открыть базу или записать данные.
     """
+    # groups: индекс в res -> номер группы дубликатов (с 1)
+    # Номер 0 в БД означает, что файл не входит ни в одну группу
     groups = {}
     for number, group in enumerate(repeats, 1):
         for file in group:
@@ -21,6 +23,7 @@ def save_result(file_path, res, repeats, main):
     connection = sqlite3.connect(file_path)
     try:
         with connection:
+            # В БД хранится только один результат: старые данные заменяются целиком
             connection.execute('''
                 CREATE TABLE IF NOT EXISTS scan_info (
                     id INTEGER PRIMARY KEY,
@@ -63,6 +66,8 @@ def save_result(file_path, res, repeats, main):
             rows = []
             for i, file in enumerate(res):
                 file_data = {
+                    # position — индекс в res, список отсортирован по убыванию размера,
+                    # и при загрузке этот порядок восстанавливается через ORDER BY position
                     'position': i,
                     'file_path': file[0],
                     'size': file[1],
@@ -101,6 +106,8 @@ def load_result(file_path):
     :raises sqlite3.Error: если база недоступна или не содержит ожидаемых таблиц.
     :raises OSError: если не удалось обработать путь к базе данных.
     """
+    # mode=ro: открываем только для чтения, иначе sqlite3.connect создаст
+    # пустую БД, если файла нет, для этого нужен URI-режим (uri=True)
     uri = Path(file_path).resolve().as_uri() + '?mode=ro'
     connection = sqlite3.connect(uri, uri=True)
     try:
