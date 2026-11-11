@@ -6,6 +6,8 @@ from PyQt6.QtSvg import QSvgRenderer
 import sys
 import FolderScan
 import os
+import sqlite3
+import ScanDatabase
 from random import choice
 
 
@@ -43,41 +45,30 @@ class Game(QMainWindow):
                 item.setFlags(item.flags() | Qt.ItemFlag.ItemIsEditable)
 
     def enemy_step(self):
-        try:
+        while self.start:
             x, y = choice(self.start)
+            self.start.remove((x, y))
             item = self.square.item(x, y)
-            if item is not None and item.text().strip() != '':
-                self.enemy_step()
-                self.start.remove((x, y))
-            else:
-                item = QTableWidgetItem('O')
-                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                self.square.setItem(x, y, item)
-                self.start.remove((x, y))
-
-        except IndexError:
-            self.start = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
-            self.clear_field()
+            if item.text().strip():
+                continue
+            item.setText('O')
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            return
+        QMessageBox.information(self, 'Крестики-Нолики', 'Нет свободных клеток')
+        self.clear_field()
 
     def make_funny(self):
         self.cont1 = QWidget()
         self.layout1 = QVBoxLayout(self.cont1)
         self.setCentralWidget(self.cont1)
-        self.square = QTableWidget()
+        self.square = QTableWidget(3, 3)
         self.layout1.addWidget(self.square)
-        self.square.setColumnCount(3)
-        self.square.setRowCount(3)
-        self.square.setHorizontalHeaderLabels(['', '', ''])
-        self.square.setVerticalHeaderLabels(['', '', ''])
-        self.square.setColumnWidth(0, 100)
-        self.square.setRowHeight(0, 100)
-        self.square.setColumnWidth(1, 100)
-        self.square.setRowHeight(1, 100)
-        self.square.setColumnWidth(2, 100)
-        self.square.setRowHeight(2, 100)
+        self.square.horizontalHeader().hide()
+        self.square.verticalHeader().hide()
         self.square.setFont(QFont('Arial', 20))
         for row in range(3):
+            self.square.setRowHeight(row, 100)
+            self.square.setColumnWidth(row, 100)
             for col in range(3):
                 item = QTableWidgetItem('')
                 item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -86,27 +77,60 @@ class Game(QMainWindow):
         self.button_step = QPushButton('Ход соперника')
         self.layout1.addWidget(self.button_clear)
         self.layout1.addWidget(self.button_step)
-        self.resize(330, 420)
+        self.resize(350, 420)
         self.setWindowTitle('Крестики-Нолики')
-
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.res = None
+        self.loaded_result = False
         self.current_path = None
         self.visible_files = list()
         self.scan_thread = None
         self.make_funny()
+        self.save_button.clicked.connect(self.save_result)
+        self.load_button.clicked.connect(self.load_result)
+        self.game_button.clicked.connect(self.game.show)
         self.open_button.clicked.connect(lambda: self.choose_folder())
         self.file_selection.clicked.connect(self.show_slice)
         self.clear_filters.clicked.connect(self.filter_cleaning)
         self.delete_button.clicked.connect(self.remove_selected_files)
         self.delete_repeats_button.clicked.connect(self.remove_all_repeats)
         self.up_button.clicked.connect(self.go_up)
-        self.game_button.clicked.connect(self.game.show)
         self.table.cellDoubleClicked.connect(self.open_folder)
+
+    def save_result(self):
+        if not self.res:
+            QMessageBox.information(self, 'Сохранение', 'Нет результата для сохранения')
+            return
+        dialog = QFileDialog(self, 'Сохранить результат')
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        dialog.setNameFilter('База SQLite (*.db)')
+        dialog.setDefaultSuffix('db')
+        dialog.selectFile('scan-result.db')
+        if not dialog.exec():
+            return
+        file_path = dialog.selectedFiles()[0]
+        try:
+            ScanDatabase.save_result(file_path, self.res, self.repeats, self.main)
+        except (sqlite3.Error, OSError, ValueError) as e:
+            QMessageBox.critical(self, 'Ошибка сохранения', str(e))
+            return
+        QMessageBox.information(self, 'Сохранение', 'Результат сохранён в базу данных')
+
+    def load_result(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Загрузить результат', '', 'База SQLite (*.db)')
+        if not file_path:
+            return
+        try:
+            res, repeats, main = ScanDatabase.load_result(file_path)
+        except (sqlite3.Error, OSError, ValueError) as e:
+            QMessageBox.critical(self, 'Ошибка загрузки', f'Не удалось загрузить результат: {e}')
+            return
+        self.show_result(res, repeats, main, from_file=True)
+        self.up_button.setEnabled(os.path.dirname(self.current_path) != self.current_path)
 
     def choose_folder(self, folder_path=None):
         if self.scan_thread is not None and self.scan_thread.isRunning():
@@ -122,8 +146,8 @@ class MainWindow(QMainWindow):
             if self.res:
                 self.file_selection.setEnabled(True)
                 self.clear_filters.setEnabled(True)
-                self.delete_button.setEnabled(True)
-                self.delete_repeats_button.setEnabled(bool(self.repeats))
+                self.delete_button.setEnabled(bool(self.res) and not self.loaded_result)
+                self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
             return
         path = os.path.abspath(path)
         self.up_button.setEnabled(False)
@@ -132,12 +156,12 @@ class MainWindow(QMainWindow):
         self.open_button.setEnabled(False)
         self.open_button.setText('Сканирование')
         self.scan_thread.finished.connect(lambda: self.open_button.setEnabled(True))
-        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(
-            self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
+        self.scan_thread.finished.connect(lambda: self.up_button.setEnabled(self.current_path is not None and os.path.dirname(self.current_path) != self.current_path))
         self.scan_thread.error.connect(self.show_error)
         self.scan_thread.start()
 
-    def show_result(self, res, repeat, main):
+    def show_result(self, res, repeat, main, from_file=False):
+        self.loaded_result = from_file
         self.res, self.repeats, self.main = res, repeat, main
         self.current_path = os.path.abspath(self.main[0])
         self.current_path_label.setText(f'Текущая папка: {self.current_path}')
@@ -160,13 +184,13 @@ class MainWindow(QMainWindow):
         message = QMessageBox(self)
         message.setIcon(QMessageBox.Icon.Information)
         message.setWindowTitle('Сканирование папки')
-        message.setText('Сканирование завершено')
+        message.setText('Результат загружен из базы' if from_file else 'Сканирование завершено')
         message.setWindowFlags(message.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.open_button.setText('Выбрать папку')
         self.file_selection.setEnabled(True)
         self.clear_filters.setEnabled(True)
-        self.delete_button.setEnabled(True)
-        self.delete_repeats_button.setEnabled(True)
+        self.delete_button.setEnabled(bool(self.res) and not self.loaded_result)
+        self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
         self.files_count.setText(f'''Количество файлов/папок: {len(self.res)}
 Суммарный вес файлов: {round(sum(i[1] for i in self.res if i[1] >= 0) / 1024, 1)} КБ
 ''')
@@ -178,14 +202,13 @@ class MainWindow(QMainWindow):
         if self.res:
             self.file_selection.setEnabled(True)
             self.clear_filters.setEnabled(True)
-            self.delete_button.setEnabled(True)
-            self.delete_repeats_button.setEnabled(bool(self.repeats))
+            self.delete_button.setEnabled(bool(self.res) and not self.loaded_result)
+            self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
 
     def closeEvent(self, event):
         if self.scan_thread is not None and self.scan_thread.isRunning():
             event.ignore()
-            QMessageBox.critical(self, 'Ошибка',
-                                 'Сканирование ещё выполняется. Дождитесь завершения.')
+            QMessageBox.critical(self, 'Ошибка', 'Сканирование ещё выполняется. Дождитесь завершения.')
 
     def show_slice(self):
         try:
@@ -244,8 +267,8 @@ class MainWindow(QMainWindow):
         has_files = bool(self.res)
         self.file_selection.setEnabled(has_files)
         self.clear_filters.setEnabled(has_files)
-        self.delete_button.setEnabled(has_files)
-        self.delete_repeats_button.setEnabled(bool(self.repeats))
+        self.delete_button.setEnabled(has_files and not self.loaded_result)
+        self.delete_repeats_button.setEnabled(bool(self.repeats) and not self.loaded_result)
 
     def remove_selected_files(self):
         try:
@@ -351,10 +374,14 @@ class MainWindow(QMainWindow):
         self.open_button = QPushButton('Выбрать папку')
         self.up_button = QPushButton('На уровень выше')
         self.clear_filters = QPushButton('Сбросить фильтер')
+        self.save_button = QPushButton('Сохранить результат в .db')
+        self.load_button = QPushButton('Загрузить результат из .db')
         self.game_button = QPushButton('Занять себя')
         self.current_path_label = QLabel('Текущая папка: не выбрана')
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.open_button)
+        self.layout1.addWidget(self.save_button)
+        self.layout1.addWidget(self.load_button)
         self.layout1.addWidget(self.files_count)
         self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
         self.layout1.addWidget(self.min_size)
@@ -378,8 +405,8 @@ class MainWindow(QMainWindow):
         self.current_path_label.setWordWrap(True)
         self.delete_nums.setPlaceholderText('Например: 1,3-5,8')
         self.setCentralWidget(self.cont1)
-        self.resize(960, 540)
-        self.setWindowIcon(QIcon('folderscan-logo.svg'))
+        self.resize(960, 700)
+        self.setWindowIcon(QIcon(image_path))
         self.setWindowTitle('FolderScan')
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setStretchLastSection(True)

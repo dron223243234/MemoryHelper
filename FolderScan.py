@@ -185,11 +185,3 @@ def delete_repeats(repeats):
     nums = ','.join(str(i + 1) for i in range(len(files)))
     return delete_files(nums, files)
 
-
-if __name__ == '__main__':
-    res, repeats, main = scan(r'C:\Users\MAXIM')
-    print(res)
-    print(repeats)
-    print(main)
-    l, r = file_selection(1000, 97959, res)
-    print(res[l: r])
