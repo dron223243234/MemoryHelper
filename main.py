@@ -1,7 +1,7 @@
 """Графический интерфейс FolderScan, поток сканирования и окно игры."""
 
 from PyQt6.QtWidgets import QTableWidget, QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QFileDialog, \
-    QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit
+    QTableWidgetItem, QMessageBox, QHeaderView, QLabel, QLineEdit, QFormLayout, QHBoxLayout
 from PyQt6.QtCore import QThread, pyqtSignal, Qt, QRectF
 from PyQt6.QtGui import QIcon, QPainter, QFont
 from PyQt6.QtSvg import QSvgRenderer
@@ -423,9 +423,7 @@ class MainWindow(QMainWindow):
         self.table = FileTable()
         image_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'folderscan-logo.svg')
         self.cont1 = BackgroundWidget(image_path)
-        self.files_count = QLabel('''Количество файлов/папок: -
-    Суммарный вес файлов: -
-    ''')
+        self.files_count = QLabel('Количество файлов/папок: -\nСуммарный вес файлов: -')
         self.min_size = QLineEdit()
         self.max_size = QLineEdit()
         self.delete_nums = QLineEdit()
@@ -439,21 +437,28 @@ class MainWindow(QMainWindow):
         self.load_button = QPushButton('Загрузить результат из .db')
         self.game_button = QPushButton('Занять себя')
         self.current_path_label = QLabel('Текущая папка: не выбрана')
+        size_form = QFormLayout()
+        size_form.addRow('Минимальный размер файла в КБ:', self.min_size)
+        size_form.addRow('Максимальный размер файла в КБ:', self.max_size)
+        delete_form = QFormLayout()
+        delete_form.addRow('Номера файлов для удаления:', self.delete_nums)
+        db_row = QHBoxLayout()
+        db_row.addWidget(self.save_button)
+        db_row.addWidget(self.load_button)
+        filter_row = QHBoxLayout()
+        filter_row.addWidget(self.file_selection)
+        filter_row.addWidget(self.clear_filters)
+        file_row = QHBoxLayout()
+        file_row.addWidget(self.delete_button)
+        file_row.addWidget(self.delete_repeats_button)
         self.layout1 = QVBoxLayout(self.cont1)
         self.layout1.addWidget(self.open_button)
-        self.layout1.addWidget(self.save_button)
-        self.layout1.addWidget(self.load_button)
+        self.layout1.addLayout(db_row)
         self.layout1.addWidget(self.files_count)
-        self.layout1.addWidget(QLabel('Минимальный размер файла в КБ:'))
-        self.layout1.addWidget(self.min_size)
-        self.layout1.addWidget(QLabel('Максимальный размер файла в КБ:'))
-        self.layout1.addWidget(self.max_size)
-        self.layout1.addWidget(self.file_selection)
-        self.layout1.addWidget(self.clear_filters)
-        self.layout1.addWidget(QLabel('Номера файлов для удаления:'))
-        self.layout1.addWidget(self.delete_nums)
-        self.layout1.addWidget(self.delete_button)
-        self.layout1.addWidget(self.delete_repeats_button)
+        self.layout1.addLayout(size_form)
+        self.layout1.addLayout(filter_row)
+        self.layout1.addLayout(delete_form)
+        self.layout1.addLayout(file_row)
         self.layout1.addWidget(self.up_button)
         self.layout1.addWidget(self.game_button)
         self.layout1.addWidget(self.current_path_label)
