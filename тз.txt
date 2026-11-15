@@ -1,0 +1,36 @@
+Анализатор дискового пространства (PyQt6, Qt 6.12.0 LTS)
+
+ФУНКЦИИ:
+
+-Сканирование дисков и папок - os(scandir - обход папок; DirEntry.is_dir - проверка типа) +
+-Подсчёт размеров папок - os(DirEntry.stat - получение размера); встроенные функции(sum - суммирование размеров) +
+-Сортировка по убыванию размера - встроенные функции(sorted - сортировка данных)
+-Навигация по папкам - PyQt6.QtWidgets(QTableWidget - отображение содержимого)
+-Фоновое сканирование - PyQt6.QtCore(QThread - фоновая работа; pyqtSignal - передача результатов)
+-Поиск дубликатов - hashlib(sha256 - создание хеша; update - обработка содержимого; hexdigest - получение хеша) +
+-Фильтрация по размеру - PyQt6.QtWidgets(QLineEdit - ввод порога); встроенные средства(сравнение чисел - отбор файлов)
+-Отображение последнего изменения - os(DirEntry.stat - получение времени); datetime(datetime.fromtimestamp - преобразование времени; strftime - форматирование даты)
+-Удаление файлов с подтверждением - PyQt6.QtWidgets(QMessageBox.question - подтверждение удаления); os(remove - удаление файла)
+
+PyQt6.QtWidgets:
+-QApplication, QMainWindow — приложение и главное окно
+-QTableWidget, QTableWidgetItem — таблица файлов и папок
+-QFileDialog.getExistingDirectory — выбор диска или папки
+-QMessageBox.question — подтверждение удаления
+-QPushButton, QLabel — кнопки и отображение состояния
+-QProgressBar — индикатор выполнения
+
+PyQt6.QtCore:
+-QThread, QObject, pyqtSignal — фоновая работа и передача результатов в интерфейс
+
+os:
+-scandir — обход содержимого папок
+-DirEntry.is_dir — определение папок
+-DirEntry.stat — получение размера и даты изменения
+-remove — безвозвратное удаление файлов
+
+hashlib:
+-sha256, update, hexdigest — вычисление хешей для поиска дубликатов
+
+datetime:
+-datetime.fromtimestamp — преобразование дат изменения файлов
